@@ -93,19 +93,6 @@ function evaluateContraflowPoints(
 
 		const tags = match.tags;
 		if (!tags || tags.oneway === undefined) {
-			uncertainties.push(
-				result(
-					"contraflow_bike",
-					definition,
-					"error",
-					"unknown",
-					"Required OSM oneway/bicycle tags are unavailable for this matched road.",
-					"low",
-					point,
-					undefined,
-					{ provider: match.provider, roadId: match.roadId },
-				),
-			);
 			continue;
 		}
 		if (

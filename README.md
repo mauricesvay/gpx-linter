@@ -13,7 +13,7 @@
 npm install
 npm run build
 npx gpxlint --help
-npx gpxlint check route.gpx
+npx gpxlint check test.gpx --geojson roadworks.geojson --config examples/gpxlint.yml
 ```
 To run the automated suite and compile TypeScript:
 
