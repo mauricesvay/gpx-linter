@@ -13,7 +13,7 @@
 npm install
 npm run build
 npx gpxlint --help
-npx gpxlint check test.gpx --geojson roadworks.geojson --config examples/gpxlint.yml
+npx gpxlint check examples/test.gpx --config examples/gpxlint.yml --format html --output report.html
 ```
 To run the automated suite and compile TypeScript:
 
@@ -30,11 +30,16 @@ The v1 implementation includes:
 | `max_slope` | enabled | GPX elevation |
 | `contraflow_bike` | enabled | Road match and OSM road tags |
 | `roadworks` | disabled | GeoJSON file |
-| `sharp_turn` | enabled | GPX geometry |
+| `sharp_turn` | disabled | GPX geometry |
 | `off_road` | disabled | Road match |
 | `missing_elevation` | enabled | GPX elevation fields |
 | `route_gaps` | enabled | GPX geometry |
 | `loop_closure` | enabled, skipped unless `loop_expected` is true | GPX geometry |
+| `bike_lane_no_same_direction_car_lane` | enabled | Road match and OSM way geometry/tags |
+
+For `bike_lane_no_same_direction_car_lane`, a nearby road only counts when its
+local geometry aligns with the route; a crossing road does not count, and a
+one-way road must also permit travel in the route's direction.
 
 Unavailable or ambiguous inputs produce `unknown`, not a pass. Reports show source availability separately; the check exits with code `2` if required data is incomplete, `1` for complete runs with error-severity findings, `0` for complete runs without errors, and `3` for fatal input/config/runtime errors. Warning and info findings do not affect the validation exit code.
 

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { bearingDegrees, distanceMeters } from "../geo";
 import type {
 	RuleDefinition,
@@ -5,6 +7,16 @@ import type {
 	Trackpoint,
 } from "../types";
 import { numberParam, result, sameSegment } from "./utils";
+
+/** Zod schema for sharp_turns rule parameters. */
+export const sharpTurnsParamsSchema = z.object({
+	max_angle: z.number().optional(),
+	min_segment_meters: z.number().optional(),
+	min_heading_change_degrees: z.number().optional(),
+});
+
+/** Infer sharp_turns params type from schema. */
+export type SharpTurnsParamsInput = z.infer<typeof sharpTurnsParamsSchema>;
 
 /**
  * Detects sharp directional changes (turns) along the route.

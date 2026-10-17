@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { distanceMeters } from "../geo";
 import type {
 	RuleContext,
@@ -6,6 +8,14 @@ import type {
 	Trackpoint,
 } from "../types";
 import { numberParam, result } from "./utils";
+
+/** Zod schema for loop_closure rule parameters. */
+export const loopClosureParamsSchema = z.object({
+	max_return_distance_meters: z.number().optional(),
+});
+
+/** Infer loop_closure params type from schema. */
+export type LoopClosureParamsInput = z.infer<typeof loopClosureParamsSchema>;
 
 /**
  * Checks whether a loop route starts and ends at approximately

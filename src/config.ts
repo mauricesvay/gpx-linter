@@ -11,13 +11,29 @@ import {
 import type { LinterConfig, RuleDefinition, Severity } from "./types";
 import { errorMessage, isRecord } from "./utils";
 
-export const DEFAULT_CONFIG: LinterConfig = {
+/**
+ * Deep-freeze an object so that nested objects are also frozen.
+ * Prevents accidental mutation of DEFAULT_CONFIG across calls.
+ */
+function deepFreeze<T>(obj: T): T {
+	if (obj === null || typeof obj !== "object") return obj;
+	Object.freeze(obj);
+	for (const key of Object.keys(obj)) {
+		const value = (obj as Record<string, unknown>)[key];
+		if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+			deepFreeze(value);
+		}
+	}
+	return obj;
+}
+
+const _DEFAULT_CONFIG: LinterConfig = {
 	rules: {
 		max_slope: {
 			enabled: true,
 			severity: "error",
 			params: {
-				max_slope_percentage: 25,
+				max_slope_percentage: 10,
 				min_segment_meters: 3,
 				min_elevation_delta_meters: 1.5,
 			},
@@ -26,7 +42,7 @@ export const DEFAULT_CONFIG: LinterConfig = {
 		roadworks: {
 			enabled: false,
 			severity: "warning",
-			params: { buffer_meters: 5 },
+			params: { buffer_meters: 1, geojson_file: "" },
 		},
 		sharp_turn: {
 			enabled: false,
@@ -57,6 +73,11 @@ export const DEFAULT_CONFIG: LinterConfig = {
 			severity: "info",
 			params: { max_return_distance_meters: 100 },
 		},
+		bike_lane_no_same_direction_car_lane: {
+			enabled: true,
+			severity: "warning",
+			params: { max_distance_meters: 30 },
+		},
 	},
 	routing: {
 		provider: "overpass",
@@ -65,7 +86,7 @@ export const DEFAULT_CONFIG: LinterConfig = {
 	reporting: { format: "text", color: "auto" },
 	route_context: { loop_expected: false, ferry_allowed: false },
 };
-Object.freeze(DEFAULT_CONFIG);
+export const DEFAULT_CONFIG: LinterConfig = deepFreeze(_DEFAULT_CONFIG);
 
 export async function loadConfig(configPath?: string): Promise<LinterConfig> {
 	if (!configPath) return structuredClone(DEFAULT_CONFIG);
@@ -130,7 +151,7 @@ export async function loadConfig(configPath?: string): Promise<LinterConfig> {
 				config.rules[id].params = {
 					...config.rules[id].params,
 					geojson_file: path.resolve(
-						path.dirname(path.resolve(configPath)),
+					path.dirname(configPath!),
 						definition.params.geojson_file,
 					),
 				};

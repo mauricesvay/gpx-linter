@@ -70,7 +70,19 @@ export function minimum(values: number[]): number {
 
 /**
  * Maps a 0-1 match score onto a confidence level.
- * Shared by the routing providers and the local OSM snapper.
+ *
+ * Thresholds (documented per score calculation in `snapping.ts`):
+ * - distance 50%, bearing 30%, road class 20%, continuity 0.2 bonus
+ * - high:   ≥ 0.80 — confident road match
+ * - medium: ≥ 0.60 — plausible but not strongly supported
+ * - low:    <  0.60 — weak match or ambiguous
+ *
+ * The 0.15 ambiguity gap (0.65–0.80) means a score can be
+ * "high" confidence but still ambiguous when two roads are
+ * similarly close. See `snapPointsToWays` for ambiguity detection.
+ *
+ * Boundary values: 0.59→low, 0.60→medium, 0.79→medium,
+ *                   0.80→high, 0.85→high, 0.99→high.
  */
 export function confidenceFromScore(score: number): "high" | "medium" | "low" {
 	if (score >= 0.8) return "high";

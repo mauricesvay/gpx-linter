@@ -35,6 +35,7 @@ export interface RouteMetadata {
 	totalPoints: number;
 	totalDistance: number;
 	totalElevationGain: number;
+	maxGradient: number;
 }
 
 export interface ParsedGpx {
@@ -89,6 +90,7 @@ export interface RuleResult {
 	message: string;
 	lat?: number;
 	lon?: number;
+	pointIndex?: number;
 	evidence?: Record<string, unknown>;
 	source?: Record<string, unknown>;
 }
@@ -135,6 +137,10 @@ export interface LoopClosureParams {
 	max_return_distance_meters?: number;
 }
 
+export interface BikeLaneNoSameDirectionCarLaneParams {
+	max_distance_meters?: number;
+}
+
 // Union of all rule parameter types
 export type RuleParams =
 	| MaxSlopeParams
@@ -143,7 +149,8 @@ export type RuleParams =
 	| OffRoadParams
 	| MissingElevationParams
 	| RouteGapsParams
-	| LoopClosureParams;
+	| LoopClosureParams
+	| BikeLaneNoSameDirectionCarLaneParams;
 
 export interface LinterConfig {
 	rules: Record<string, RuleDefinition>;
@@ -169,12 +176,72 @@ export interface LinterConfig {
 	};
 }
 
+// ── Pipeline stage types ──────────────────────────────
+
+/** Input to the pipeline: a parsed GPX file ready for analysis. */
+export interface RouteInput {
+	trackName: string | null;
+	points: Trackpoint[];
+	metadata: RouteMetadata;
+}
+
+/** Normalized track with computed properties. */
+export interface NormalizedTrack {
+	points: Trackpoint[];
+	metadata: RouteMetadata;
+	routeContext?: LinterConfig["route_context"];
+}
+
+/** Context passed to rule evaluators. */
+export interface PipelineContext {
+	track: NormalizedTrack;
+	rules: Record<string, RuleDefinition>;
+	routeContext?: LinterConfig["route_context"];
+	roadMatching?: DataSourceAvailability;
+	matches?: MatchResult[];
+	routeAvailability?: {
+		routing: DataSourceAvailability;
+		osm?: DataSourceAvailability;
+		roadworks?: DataSourceAvailability;
+	};
+}
+
+/** Legacy context type for backward compatibility with existing rule handlers. */
 export interface RuleContext {
 	rules?: Record<string, RuleDefinition>;
 	roadMatching?: DataSourceAvailability;
 	matches?: MatchResult[];
 	roadMatches?: MatchResult[];
 	routeContext?: LinterConfig["route_context"];
+	/** Fetched OSM ways for rules needing full way data. */
+	osmWays?: import("./osm").OsmWay[];
+	osmWaysAvailability?: DataSourceAvailability;
+}
+
+/** A single finding from rule evaluation. */
+export interface Finding {
+	ruleId: string;
+	status: ResultStatus;
+	severity: Severity;
+	confidence: Confidence;
+	message: string;
+	evidence?: Record<string, unknown>;
+	evidenceLocation?: {
+		startIndex: number;
+		endIndex: number;
+	};
+}
+
+/** Final output of the linting pipeline. */
+export interface LintPipelineReport {
+	routeName: string;
+	generatedAt: string;
+	track: NormalizedTrack;
+	findings: Finding[];
+	availability: DataAvailability;
+	cache: CacheStats;
+	exitCode: 0 | 1 | 2 | 3;
+	rules: Record<string, { failures: number; unknown: number; skipped: number; enabled: boolean }>;
 }
 
 export interface CacheStats {
@@ -185,6 +252,7 @@ export interface CacheStats {
 export interface TrackCoordinate {
 	lat: number;
 	lon: number;
+	distanceFromStart: number;
 }
 
 export interface LintReport {
@@ -194,12 +262,20 @@ export interface LintReport {
 		severity: Record<Severity, number>;
 		status: Record<ResultStatus, number>;
 	};
-	rules: Record<string, { failures: number; unknown: number; skipped: number }>;
+	rules: Record<string, { failures: number; unknown: number; skipped: number; enabled: boolean }>;
 	results: RuleResult[];
 	availability: DataAvailability;
 	cache: CacheStats;
 	exitCode: 0 | 1 | 2 | 3;
 	trackCoords?: TrackCoordinate[];
+	/** Matched road IDs per point. */
+	matchedRoadIds?: (string | null)[];
+	/** Highway tag per point (e.g. 'motorway', 'cycleway', 'footway'). */
+	matchedHighway?: (string | null)[];
+	/** Match status per point: 'matched' | 'ambiguous' | 'unmatched'. */
+	matchedStatus?: (string | null)[];
+	/** Route statistics. */
+	routeStats?: Pick<RouteMetadata, "totalDistance" | "totalElevationGain" | "maxGradient">;
 }
 
 export type GeoJsonGeometry =

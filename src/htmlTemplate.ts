@@ -1,4 +1,133 @@
-import type { LintReport, RuleResult, TrackCoordinate } from "./types";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as Handlebars from "handlebars";
+import type {
+	LintReport,
+	RouteMetadata,
+	RuleResult,
+	TrackCoordinate,
+} from "./types";
+
+const LEAFLET_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+const LEAFLET_CSS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+const PMTILES_URL = "https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js";
+const GEOMETRYUTIL_URL =
+	"https://raw.githubusercontent.com/makinacorpus/leaflet.geometryutil/master/src/leaflet.geometryutil.js";
+const DISTANCE_MARKER_URL =
+	"https://raw.githubusercontent.com/adoroszlai/leaflet-distance-markers/master/leaflet-distance-marker.js";
+const DISTANCE_MARKER_CSS_URL =
+	"https://raw.githubusercontent.com/adoroszlai/leaflet-distance-markers/master/leaflet-distance-marker.css";
+
+const TEMPLATES_DIR = path.join(__dirname, "templates");
+
+interface ResultRange {
+	ruleId: string;
+	enabled?: boolean;
+	status: RuleResult["status"];
+	severity: RuleResult["severity"];
+	confidence: RuleResult["confidence"];
+	message: string;
+	source?: Record<string, unknown>;
+	evidence?: Record<string, unknown>;
+	pointIndex?: number;
+	startIndex: number;
+	endIndex: number;
+	startLat?: number;
+	startLon?: number;
+	endLat?: number;
+	endLon?: number;
+	distanceFromStart?: string;
+	distanceToEnd?: string;
+}
+
+function groupContiguousResults(
+	results: RuleResult[],
+	trackCoords?: TrackCoordinate[],
+): ResultRange[] {
+	const indexed = results
+		.filter((r) => r.pointIndex !== undefined)
+		.sort((a, b) => (a.pointIndex ?? 0) - (b.pointIndex ?? 0));
+
+	if (indexed.length === 0) return [];
+
+	const ranges: ResultRange[] = [];
+	let current: ResultRange | null = null;
+
+	for (const r of indexed) {
+		const idx = r.pointIndex!;
+
+		if (
+			!current ||
+			current.status !== r.status ||
+			current.severity !== r.severity ||
+			current.ruleId !== r.ruleId ||
+			current.endIndex !== idx - 1
+		) {
+			if (current) ranges.push(current);
+			current = {
+				ruleId: r.ruleId,
+				status: r.status,
+				severity: r.severity,
+				confidence: r.confidence,
+				message: r.message,
+				source: r.source,
+				evidence: r.evidence,
+				pointIndex: r.pointIndex,
+				startIndex: idx,
+				endIndex: idx,
+				startLat: r.lat,
+				startLon: r.lon,
+				endLat: r.lat,
+				endLon: r.lon,
+		};
+		} else {
+			current.endIndex = idx;
+			current.endLat = r.lat;
+			current.endLon = r.lon;
+		}
+	}
+	if (current) ranges.push(current);
+
+	// Compute distanceFromStart and distanceToEnd for each range
+	if (trackCoords) {
+		for (const r of ranges) {
+			if (trackCoords[r.startIndex]) {
+				r.distanceFromStart = km(trackCoords[r.startIndex].distanceFromStart);
+			}
+			if (r.endIndex !== r.startIndex && trackCoords[r.endIndex]) {
+				r.distanceToEnd = km(trackCoords[r.endIndex].distanceFromStart);
+			}
+		}
+	}
+
+	return ranges;
+}
+
+function km(distanceMeters: number): string {
+	return (distanceMeters / 1000).toFixed(2);
+}
+
+async function fetchScript(url: string): Promise<string> {
+	const res = await fetch(url);
+	if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+	return res.text();
+}
+
+let _scriptsPromise: Promise<{ js: string; css: string }> | null = null;
+
+async function getPlugins(): Promise<{ js: string; css: string }> {
+	if (!_scriptsPromise) {
+		_scriptsPromise = Promise.all([
+			fetchScript(GEOMETRYUTIL_URL),
+			fetchScript(DISTANCE_MARKER_URL),
+			fetchScript(DISTANCE_MARKER_CSS_URL),
+		]).then(([geometryutil, distanceMarker, css]) => ({
+			js: `<script>${geometryutil}</script>\n<script>${distanceMarker}</script>`,
+			css: `<style>${css}</style>`,
+		}));
+	}
+	return _scriptsPromise;
+}
 
 function escapeHtml(value: string): string {
 	return value.replace(
@@ -14,138 +143,191 @@ function escapeHtml(value: string): string {
 	);
 }
 
-function buildFindingsHtml(results: RuleResult[]): string {
-	return results
-		.map(
-			(item) =>
-				`<li class="${escapeHtml(item.status)}"><strong>${escapeHtml(item.status.toUpperCase())} ${escapeHtml(item.severity.toUpperCase())} ${escapeHtml(item.ruleId)}</strong>: ${escapeHtml(item.message)}${item.lat === undefined ? "" : ` <span>(${item.lat.toFixed(6)}, ${item.lon?.toFixed(6)})</span>`}</li>`,
-		)
-		.join("\n");
+// ── Handlebars setup ──────────────────────────────────
+
+Handlebars.registerHelper("km", (meters: number) => km(meters));
+Handlebars.registerHelper("escapeHtml", escapeHtml);
+Handlebars.registerHelper("toUpperCase", (str: string) => str.toUpperCase());
+
+// Load partials from files
+const findingsTemplate = fs.readFileSync(
+	path.join(TEMPLATES_DIR, "partials", "findings.hbs"),
+	"utf-8",
+);
+Handlebars.registerPartial("findings", findingsTemplate);
+
+const statusesTemplate = fs.readFileSync(
+	path.join(TEMPLATES_DIR, "partials", "statuses.hbs"),
+	"utf-8",
+);
+Handlebars.registerPartial("statuses", statusesTemplate);
+
+// Compile main templates
+const simpleTemplate = Handlebars.compile(
+	fs.readFileSync(path.join(TEMPLATES_DIR, "simple.hbs"), "utf-8"),
+);
+const mapTemplate = Handlebars.compile(
+	fs.readFileSync(path.join(TEMPLATES_DIR, "map.hbs"), "utf-8"),
+);
+
+// ── Report generation ─────────────────────────────────
+
+export interface HtmlContext {
+	routeName: string;
+	errorCount: string;
+	warningCount: string;
+	infoCount: string;
+	exitCode: string;
+	routeStats?: Pick<RouteMetadata, "totalDistance" | "totalElevationGain" | "maxGradient">;
+	distance?: string;
+	elevGain?: string;
+	maxGrad?: string;
+	trackCoords?: TrackCoordinate[];
+	matchedStatus?: (string | null)[];
+	matchedHighway?: (string | null)[];
+	findingsWithDistance?: Array<{
+		lat: number;
+		lon: number;
+		distanceFromStart: number | null;
+		ruleId: string;
+		status: string;
+		severity: string;
+		message: string;
+		evidence?: Record<string, unknown>;
+	}>;
+	rangeSegmentsJson?: string;
+	trackJson?: string;
+	pointCount?: string;
+	markerCount?: string;
+	pluginsHtml?: string;
+	statusesHtml?: AvailabilityEntry[];
+	matchStatusesJson?: string;
+	matchHighwaysJson?: string;
+	findingsJson?: string;
+	ranges?: ResultRange[];
+	rules?: LintReport["rules"];
 }
 
-function buildStatusesHtml(availability: LintReport["availability"]): string {
+interface AvailabilityEntry {
+	key: string;
+	status: string;
+	availableItems: number;
+	requestedItems: number;
+	message?: string;
+}
+
+function buildStatusesHtml(
+	availability: LintReport["availability"],
+): AvailabilityEntry[] {
 	return Object.entries(availability)
 		.filter(([key]) => key !== "incomplete")
-		.map(
-			([key, item]) =>
-				`<li>${escapeHtml(key)}: ${escapeHtml(item.status)} (${item.availableItems}/${item.requestedItems})${item.message ? ` — ${escapeHtml(item.message)}` : ""}</li>`,
-		)
-		.join("\n");
+		.map(([key, item]) => ({
+			key,
+			status: item.status,
+			availableItems: item.availableItems,
+			requestedItems: item.requestedItems,
+			message: item.message,
+		}));
 }
 
-const SIMPLE_HTML_TEMPLATE = `<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GPX report — {{routeName}}</title>
-<style>body{font:16px system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;color:#202124}li{margin:.55rem 0}.fail{color:#a12020}.unknown{color:#765900}.pass{color:#176b37}.skipped{color:#555}</style></head>
-<body><h1>GPX route report: {{routeName}}</h1>
-<p>{{errorCount}} error(s), {{warningCount}} warning(s), {{infoCount}} info failure(s)</p>
-<h2>Data availability</h2><ul>{{statuses}}</ul>
-<h2>Findings</h2><ul>{{findings}}</ul><p>Exit code: {{exitCode}}</p></body></html>
-`;
-
-const MAP_HTML_TEMPLATE = `<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GPX report — {{routeName}}</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js"></script>
-<style>
-body{font:16px system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;color:#202124}
-li{margin:.55rem 0}
-.fail{color:#a12020}
-.unknown{color:#765900}
-.pass{color:#176b37}
-.skipped{color:#555}
-#map{height:500px;width:100%;border-radius:8px;margin:1rem 0}
-.map-info{font-size:13px;color:#555;margin:.5rem 0}
-</style></head>
-<body><h1>GPX route report: {{routeName}}</h1>
-<p>{{errorCount}} error(s), {{warningCount}} warning(s), {{infoCount}} info failure(s)</p>
-<h2>Map</h2>
-<div id="map"></div>
-<p class="map-info">Route: {{pointCount}} points | Findings: {{markerCount}} markers</p>
-<h2>Data availability</h2><ul>{{statuses}}</ul>
-<h2>Findings</h2><ul>{{findings}}</ul><p>Exit code: {{exitCode}}</p>
-<script>
-(function() {
-  var track = {{trackJson}};
-  var findings = {{findingsJson}};
-  var map = L.map('map').setView([track[0][0], track[0][1]], 13);
-  var tileUrl = 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png';
-  L.tileLayer(tileUrl, {
-    maxZoom: 19,
-    attribution: '\\u00A9 <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
-  var trackPolyline = L.polyline(track, {color: '#2667d9', weight: 4}).addTo(map);
-  map.fitBounds(trackPolyline.getBounds().pad(0.1));
-  var severityColor = {error: '#d32f2f', warning: '#f57c00', info: '#1976d2'};
-  var statusIcon = {pass: '\\u2714', fail: '\\u2717', unknown: '?', skipped: '\\u2014'};
-  findings.forEach(function(f) {
-    var color = severityColor[f.severity] || '#555';
-    var marker = L.circleMarker([f.lat, f.lon], {
-      radius: 8,
-      fillColor: color,
-      color: '#fff',
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.8
-    }).addTo(map);
-    var label = statusIcon[f.status] || '';
-    marker.bindPopup('<strong>' + f.ruleId + '</strong><br>' + f.message + '<br><em>' + f.status.toUpperCase() + '</em>');
-  });
-})();
-</script>
-</body></html>
-`;
-
-function substitute(template: string, vars: Record<string, string>): string {
-	return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) =>
-		vars[key] ?? `{{${key}}}`,
-	);
-}
-
-export function formatHtml(report: LintReport): string {
-	const findings = buildFindingsHtml(report.results);
-	const statuses = buildStatusesHtml(report.availability);
+export async function formatHtml(report: LintReport): Promise<string> {
 	const trackCoords = report.trackCoords || [];
+	const ranges = groupContiguousResults(report.results, trackCoords);
+	const allRules = report.rules ?? {};
+	// Attach enabled status to each range
+	for (const r of ranges) {
+		const ruleInfo = allRules[r.ruleId];
+		if (ruleInfo) r.enabled = ruleInfo.enabled;
+	}
 	const findingsWithCoords = report.results.filter(
-		(r) => r.lat !== undefined && r.lon !== undefined,
+		(r) => r.status !== "unknown" && r.lat !== undefined && r.lon !== undefined,
 	);
 
-	const baseVars: Record<string, string> = {
+	const stats = report.routeStats;
+	const statusesHtml = buildStatusesHtml(report.availability);
+
+	const baseVars: HtmlContext = {
 		routeName: escapeHtml(report.routeName),
 		errorCount: String(report.summary.severity.error),
 		warningCount: String(report.summary.severity.warning),
 		infoCount: String(report.summary.severity.info),
 		exitCode: String(report.exitCode),
-		statuses,
-		findings,
 	};
 
-	if (trackCoords.length === 0 || findingsWithCoords.length === 0) {
-		return substitute(SIMPLE_HTML_TEMPLATE, {
-			...baseVars,
-		});
+	if (stats) {
+		baseVars.routeStats = stats;
+		baseVars.distance = km(stats.totalDistance);
+		baseVars.elevGain = stats.totalElevationGain.toFixed(0);
+		baseVars.maxGrad = stats.maxGradient.toFixed(1);
 	}
 
-	const trackJson = JSON.stringify(trackCoords.map((c) => [c.lat, c.lon]));
-	const findingsJson = JSON.stringify(
-		findingsWithCoords.map((f) => ({
-			lat: f.lat!,
-			lon: f.lon!,
-			ruleId: f.ruleId,
-			status: f.status,
-			severity: f.severity,
-			message: f.message,
-		})),
-	);
+	// Simple report (no map)
+	if (trackCoords.length === 0) {
+		const context: HtmlContext = {
+			...baseVars,
+			statusesHtml,
+			ranges,
+		};
+		return simpleTemplate(context);
+	}
 
-	return substitute(MAP_HTML_TEMPLATE, {
+	// Map report
+	const { js, css } = await getPlugins();
+	const pluginsHtml =
+		`<link rel="stylesheet" href="${LEAFLET_CSS_URL}" />\n<script src="${LEAFLET_URL}"></script>\n${js}\n<script src="${PMTILES_URL}"></script>\n${css}`;
+
+	// Escape JSON for embedding in <script> blocks
+	const escapeJson = (val: unknown) =>
+		JSON.stringify(val).replace(/<\/(script)/gi, "<\\/$1");
+
+	const context: HtmlContext = {
 		...baseVars,
+		pluginsHtml,
+		statusesHtml,
+		rules: report.rules,
+		ranges,
 		pointCount: String(trackCoords.length),
 		markerCount: String(findingsWithCoords.length),
-		trackJson,
-		findingsJson,
-	});
+		trackJson: escapeJson(trackCoords.map((c) => [c.lat, c.lon])),
+		matchStatusesJson: escapeJson(report.matchedStatus || []),
+		matchHighwaysJson: escapeJson(report.matchedHighway || []),
+		findingsJson: escapeJson(
+			findingsWithCoords.map((f) => {
+				const idx = trackCoords.findIndex(
+					(c) =>
+						Math.abs(c.lat - f.lat!) < 0.0001 &&
+						Math.abs(c.lon - f.lon!) < 0.0001,
+				);
+				return {
+					lat: f.lat!,
+					lon: f.lon!,
+					distanceFromStart: idx >= 0 ? trackCoords[idx].distanceFromStart : null,
+					ruleId: f.ruleId,
+					status: f.status,
+					severity: f.severity,
+					message: f.message,
+					evidence: f.evidence,
+				};
+			}),
+		),
+		rangeSegmentsJson: escapeJson(
+			ranges
+				.filter(
+					(r) =>
+						r.startLat !== undefined &&
+						r.endLat !== undefined &&
+						r.endIndex !== r.startIndex,
+				)
+				.map((r) => ({
+					ruleId: r.ruleId,
+					status: r.status,
+					severity: r.severity,
+					message: r.message,
+					start: [r.startLat!, r.startLon!] as [number, number],
+					end: [r.endLat!, r.endLon!] as [number, number],
+				})),
+		),
+	};
+
+	return mapTemplate(context);
 }

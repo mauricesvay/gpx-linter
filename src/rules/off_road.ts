@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type {
 	RuleContext,
 	RuleDefinition,
@@ -11,6 +13,14 @@ import {
 	result,
 	uncertaintyResult,
 } from "./utils";
+
+/** Zod schema for off_road rule parameters. */
+export const offRoadParamsSchema = z.object({
+	max_distance_meters: z.number().optional(),
+});
+
+/** Infer off_road params type from schema. */
+export type OffRoadParamsInput = z.infer<typeof offRoadParamsSchema>;
 
 /**
  * Evaluates the off_road rule.

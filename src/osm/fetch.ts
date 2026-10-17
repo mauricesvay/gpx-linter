@@ -19,6 +19,15 @@ import {
 	truncateText,
 } from "../utils";
 import {
+	CLI_VERSION,
+	RATE_LIMIT_BASE_MS,
+	RATE_LIMIT_MAX_MS,
+	RATE_LIMIT_JITTER_FRACTION,
+	RATE_LIMIT_BACKOFF_MULTIPLIER,
+	MAX_REQUESTS_PER_SECOND,
+} from "../constants";
+import {
+	CACHE_VERSION,
 	DEFAULT_CACHE_DIR,
 	OSM_CACHE_FILE_NAME,
 	OVERPASS_FALLBACK,
@@ -37,6 +46,16 @@ import {
 	bboxQuery,
 } from "./cache";
 
+/* ── Rate-limit / backoff helpers ───────────────────────────────────── */
+
+/** Compute exponential backoff with jitter for a given attempt number. */
+function computeBackoffMs(attempt: number): number {
+	const baseMs = RATE_LIMIT_BASE_MS * Math.pow(RATE_LIMIT_BACKOFF_MULTIPLIER, attempt);
+	const capped = Math.min(baseMs, RATE_LIMIT_MAX_MS);
+	const jitter = Math.random() * capped * RATE_LIMIT_JITTER_FRACTION;
+	return capped + jitter;
+}
+
 /* ── Overpass fetch (chunked bbox) ──────────────────────────────────── */
 
 async function requestOverpass(
@@ -52,7 +71,7 @@ async function requestOverpass(
 				method: "POST",
 				headers: {
 					"content-type": "application/x-www-form-urlencoded",
-					"User-Agent": "gpxlint/1.0.0",
+					"User-Agent": `gpxlint/${CLI_VERSION}`,
 				},
 				body: `data=${encodeURIComponent(query)}`,
 				signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS),
@@ -85,9 +104,14 @@ async function requestOverpass(
 			`HTTP ${response.status} ${response.statusText}`.trim() + responseBodyDetail(body);
 		const retryable = response.status === 429 || response.status >= 500;
 		if (!retryable || attempt > 0) return { text: "", error: lastError };
-		const delayMs = retryAfterMilliseconds(response.headers.get("retry-after"));
-		if (delayMs === null) return { text: "", error: lastError };
-		await delay(delayMs);
+		// Respect Retry-After header when present.
+		const retryAfter = retryAfterMilliseconds(response.headers.get("retry-after"));
+		if (retryAfter !== null) {
+			await delay(retryAfter);
+			continue;
+		}
+		// Exponential backoff with jitter.
+		await delay(computeBackoffMs(attempt));
 	}
 	return { text: "", error: lastError };
 }
@@ -169,7 +193,7 @@ export async function fetchOverpassBboxWays(
 		const cached = cacheEnabled ? entries[key] : undefined;
 		if (
 			cached &&
-			Date.now() - cached.fetchedAt < OVERPASS_TTL_MS
+			Date.now() - cached.storedAt < OVERPASS_TTL_MS
 		) {
 			for (const way of cached.ways) waysById.set(way.id, way);
 			providedBy.add(cached.provider);
@@ -181,9 +205,10 @@ export async function fetchOverpassBboxWays(
 		let chunkWays: OsmWay[] | null = null;
 		let supplier: string | null = null;
 		for (const url of urls) {
-			const rateLimitWait = 1000 - (Date.now() - lastRequestAt);
+			const rateLimitWait = (1 / MAX_REQUESTS_PER_SECOND) * 1000 - (Date.now() - lastRequestAt);
 			if (lastRequestAt > 0 && rateLimitWait > 0) await delay(rateLimitWait);
 			lastRequestAt = Date.now();
+			console.error(`[overpass] Fetching chunk: ${chunk.latMin.toFixed(4)},${chunk.lonMin.toFixed(4)} — ${chunk.latMax.toFixed(4)},${chunk.lonMax.toFixed(4)} (${url})`);
 			const response = await requestOverpass(url, bboxQuery(chunk), fetcher);
 			lastRequestAt = Date.now();
 			if (response.error) {
@@ -206,9 +231,11 @@ export async function fetchOverpassBboxWays(
 			providedBy.add(supplier);
 			for (const way of chunkWays) waysById.set(way.id, way);
 			fetchedEntries[key] = {
+				version: CACHE_VERSION,
+				source: "overpass",
+				storedAt: Date.now(),
 				ways: chunkWays,
 				provider: supplier,
-				fetchedAt: Date.now(),
 			};
 		}
 	}

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { distanceMeters } from "../geo";
 import type {
 	RuleContext,
@@ -6,6 +8,14 @@ import type {
 	Trackpoint,
 } from "../types";
 import { numberParam, result, sameSegment } from "./utils";
+
+/** Zod schema for route_gaps rule parameters. */
+export const routeGapsParamsSchema = z.object({
+	max_gap_meters: z.number().optional(),
+});
+
+/** Infer route_gaps params type from schema. */
+export type RouteGapsParamsInput = z.infer<typeof routeGapsParamsSchema>;
 
 /**
  * Identifies large jumps between consecutive trackpoints that indicate

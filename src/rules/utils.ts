@@ -103,6 +103,7 @@ export function result(
 	if (point) {
 		value.lat = point.lat;
 		value.lon = point.lon;
+		value.pointIndex = point.index;
 	}
 	if (evidence) value.evidence = evidence;
 	if (source) value.source = source;
@@ -175,7 +176,7 @@ export function uncertaintyResult(
 	return result(
 		ruleId,
 		definition,
-		"error",
+		"info",
 		"unknown",
 		match.reason ??
 			`Road match is ${match.status} with ${match.confidence} confidence.`,

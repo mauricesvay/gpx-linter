@@ -3,7 +3,7 @@ rules:
     enabled: true
     severity: error
     params:
-      max_slope_percentage: 25
+      max_slope_percentage: 10
       min_segment_meters: 3
       min_elevation_delta_meters: 1.5
 
@@ -12,10 +12,12 @@ rules:
     severity: error
 
   roadworks:
-    enabled: false
+    enabled: true
     severity: warning
     params:
-      buffer_meters: 5
+      buffer_meters: 1
+      # Get from https://opendata.paris.fr/explore/dataset/chantiers-perturbants/information/
+      geojson_file: roadworks.geojson
 
   sharp_turn:
     enabled: false
@@ -32,7 +34,7 @@ rules:
       max_distance_meters: 50
 
   missing_elevation:
-    enabled: true
+    enabled: false
     severity: info
     params:
       max_missing_elevation_percentage: 50
@@ -48,6 +50,12 @@ rules:
     severity: info
     params:
       max_return_distance_meters: 100
+
+  bike_lane_no_same_direction_car_lane:
+    enabled: true
+    severity: warning
+    params:
+      max_distance_meters: 15
 
 route_context:
   loop_expected: false

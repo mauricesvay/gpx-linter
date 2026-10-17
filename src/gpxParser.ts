@@ -109,6 +109,7 @@ export function parseGpx(xml: string): ParsedGpx {
 	const creator =
 		typeof root["@_creator"] === "string" ? root["@_creator"] : null;
 	const totalElevationGain = calculateElevationGain(points);
+	const maxGradient = calculateMaxGradient(points);
 	const metadata: RouteMetadata = {
 		gpxName,
 		gpxCreator: creator,
@@ -116,6 +117,7 @@ export function parseGpx(xml: string): ParsedGpx {
 		totalPoints: points.length,
 		totalDistance: distanceFromStart,
 		totalElevationGain,
+		maxGradient,
 	};
 	return { tracks, points, metadata };
 }
@@ -124,7 +126,7 @@ export function parseGpxFile(contents: string): ParsedGpx {
 	return parseGpx(contents);
 }
 
-function calculateElevationGain(points: Trackpoint[]): number {
+export function calculateElevationGain(points: Trackpoint[]): number {
 	let gain = 0;
 	let previous: Trackpoint | null = null;
 	for (const point of points) {
@@ -139,6 +141,27 @@ function calculateElevationGain(points: Trackpoint[]): number {
 		previous = point;
 	}
 	return gain;
+}
+
+export function calculateMaxGradient(points: Trackpoint[]): number {
+	let maxGrad = 0;
+	let previous: Trackpoint | null = null;
+	for (const point of points) {
+		if (point.segmentId !== previous?.segmentId) previous = null;
+		if (
+			previous !== null &&
+			point.ele !== null &&
+			previous.ele !== null
+		) {
+			const horizontalDist = point.distanceTo(previous);
+			if (horizontalDist > 0) {
+				const grad = Math.abs(point.ele - previous.ele) / horizontalDist;
+				if (grad > maxGrad) maxGrad = grad;
+			}
+		}
+		previous = point;
+	}
+	return maxGrad * 100; // percentage
 }
 
 function numericAttribute(point: XmlRecord, name: string): number | null {

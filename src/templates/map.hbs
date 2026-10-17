@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPX report — {{{routeName}}}</title>
+{{{pluginsHtml}}}
+<style>
+body{font:16px system-ui,sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem;color:#202124}
+li{margin:.55rem 0}
+.fail{color:#a12020}
+.unknown{color:#765900}
+.pass{color:#176b37}
+.skipped{color:#555}
+.enabled,.disabled{font-size:0.85em;font-weight:normal}
+#map{height:500px;width:100%;border-radius:8px;margin:1rem 0}
+.map-info{font-size:13px;color:#555;margin:.5rem 0}
+#legend{background:#f5f5f5;border-radius:6px;padding:0.5rem 0.75rem;margin:0.5rem 0;font-size:13px}
+#legend span{margin-right:1rem}
+</style></head>
+<body>
+<h1>GPX route report: {{{routeName}}}</h1>
+<p>{{{errorCount}}} error(s), {{{warningCount}}} warning(s), {{{infoCount}}} info failure(s)</p>
+<p>{{#if routeStats}}Distance: {{{distance}}} km | Elevation gain: {{{elevGain}}} m | Max gradient: {{{maxGrad}}}%{{else}}Distance: — | Elevation gain: — | Max gradient: —{{/if}}</p>
+<h2>Map</h2>
+<div id="map"></div>
+<div id="legend">
+  <span style="color:#e07821;font-weight:bold">■ motorway/trunk</span>
+  <span style="color:#f57c00">■ primary</span>
+  <span style="color:#7cb342">■ secondary</span>
+  <span style="color:#1976d2">■ residential/tertiary</span>
+  <span style="color:#7b1fa2">■ cycleway/footway</span>
+  <span style="color:#888;text-decoration:line-through">═══ Unmatched</span>
+  <span style="color:#d32f2f">● Findings</span>
+</div>
+<p class="map-info">Route: {{{pointCount}}} points | Findings: {{{markerCount}}} markers</p>
+<h2>Data availability</h2><ul>{{> statuses sources=statusesHtml}}</ul>
+<h2>Findings</h2><ul>{{> findings ranges=ranges}}</ul><h2>Rules</h2><ul>{{#each rules}}<li>{{@key}}: {{#if this.enabled}}enabled{{else}}disabled{{/if}}{{#if this.failures}} ({{this.failures}} failures){{/if}}{{#if this.unknown}} ({{this.unknown}} unknown){{/if}}{{#if this.skipped}} ({{this.skipped}} skipped){{/if}}</li>{{/each}}</ul><p>Exit code: {{{exitCode}}}</p>
+<script>
+(function() {
+  var track = {{{trackJson}}};
+  var matchStatuses = {{{matchStatusesJson}}};
+  var matchHighways = {{{matchHighwaysJson}}};
+  var findings = {{{findingsJson}}};
+  var map = L.map('map').setView([track[0][0], track[0][1]], 13);
+  var tileUrl = 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png';
+  L.tileLayer(tileUrl, {
+    maxZoom: 19,
+    attribution: '\\u00A9 <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  var highwayColors = {
+    motorway: '#e07821',
+    trunk: '#e07821',
+    primary: '#f57c00',
+    secondary: '#7cb342',
+    tertiary: '#1976d2',
+    residential: '#1976d2',
+    living_street: '#1976d2',
+    unclassified: '#1976d2',
+    service: '#1976d2',
+    track: '#7cb342',
+    path: '#7b1fa2',
+    footway: '#7b1fa2',
+    cycleway: '#7b1fa2',
+    pedestrian: '#7b1fa2',
+    steps: '#7b1fa2',
+    pedestrian: '#7b1fa2'
+  };
+  var unmatchedColor = '#888888';
+  var segments = [];
+  var currentColor = '#888888';
+  var currentSegment = [];
+  for (var i = 0; i < track.length; i++) {
+    var status = matchStatuses[i];
+    var highway = matchHighways[i];
+    var color = (status === 'matched' || status === 'ambiguous')
+      ? (highway ? (highwayColors[highway] || '#888888') : '#888888')
+      : unmatchedColor;
+    if (i === 0) {
+      currentColor = color;
+      currentSegment = [track[i]];
+    } else {
+      if (color !== currentColor) {
+        if (currentSegment.length > 1) {
+          segments.push({color: currentColor, coords: currentSegment});
+        }
+        currentSegment = [track[i-1], track[i]];
+        currentColor = color;
+      } else {
+        currentSegment.push(track[i]);
+      }
+    }
+  }
+  if (currentSegment.length > 1) {
+    segments.push({color: currentColor, coords: currentSegment});
+  }
+  var bounds = L.latLngBounds([]);
+  L.polyline(track, {
+    opacity: 0,
+    weight: 0,
+    interactive: false,
+    distanceMarkers: { offset: 1000 }
+  }).addTo(map);
+  segments.forEach(function(seg) {
+    var polyline = L.polyline(seg.coords, {
+      color: seg.color,
+      weight: 4
+    }).addTo(map);
+    bounds.extend(polyline.getBounds());
+  });
+  if (bounds.isValid()) {
+    map.fitBounds(bounds.pad(0.1));
+  }
+  var severityColor = {error: '#d32f2f', warning: '#f57c00', info: '#1976d2'};
+  var statusIcon = {pass: '\\u2714', fail: '\\u2717', unknown: '?', skipped: '\\u2014'};
+  function escapeTooltipHtml(value) {
+    return String(value).replace(/[&<>"']/g, function(character) {
+      return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character];
+    });
+  }
+  function bindRoadworksTooltip(shape, properties) {
+    var propertyHtml = Object.keys(properties).map(function(key) {
+      var value = properties[key];
+      var displayValue = value === null ? '—' : (typeof value === 'object' ? JSON.stringify(value) : value);
+      return '<strong>' + escapeTooltipHtml(key) + ':</strong> ' + escapeTooltipHtml(displayValue);
+    }).join('<br>');
+    shape.bindTooltip(propertyHtml, {direction: 'top'});
+  }
+  findings.forEach(function(f) {
+    var color = severityColor[f.severity] || '#555';
+    var marker = L.circleMarker([f.lat, f.lon], {
+      radius: 8,
+      fillColor: color,
+      color: '#fff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.8
+    }).addTo(map);
+    var label = statusIcon[f.status] || '';
+    var distHtml = f.distanceFromStart !== null ? '<br>' + (f.distanceFromStart / 1000).toFixed(2) + ' km from start' : '';
+    marker.bindPopup('<strong>' + f.ruleId + '</strong><br>' + f.message + distHtml + '<br><em>' + f.status.toUpperCase() + '</em>');
+    if (f.evidence && f.evidence.geometry && f.ruleId === 'roadworks') {
+      var geom = f.evidence.geometry;
+      var geomColor = '#e65100';
+      var geomStyle = {color: geomColor, weight: 2, fillOpacity: 0.15};
+      var shape;
+      if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
+        shape = L.polygon(geom.coordinates, Object.assign({}, geomStyle, {fillColor: geomColor})).addTo(map);
+      } else if (geom.type === 'LineString' || geom.type === 'MultiLineString') {
+        shape = L.polyline(geom.coordinates, geomStyle).addTo(map);
+      } else if (geom.type === 'Point') {
+        shape = L.circle(geom.coordinates, {radius: 5, color: geomColor, fillColor: geomColor, fillOpacity: 0.5}).addTo(map);
+      } else if (geom.type === 'MultiPoint') {
+        geom.coordinates.forEach(function(coords) {
+          var pointShape = L.circle(coords, {radius: 5, color: geomColor, fillColor: geomColor, fillOpacity: 0.5}).addTo(map);
+          if (f.evidence.properties) bindRoadworksTooltip(pointShape, f.evidence.properties);
+        });
+      }
+      if (shape && f.evidence.properties) {
+        bindRoadworksTooltip(shape, f.evidence.properties);
+      }
+    }
+  });
+  var rangeSegments = {{{rangeSegmentsJson}}};
+  rangeSegments.forEach(function(seg) {
+    var color = severityColor[seg.severity] || '#555';
+    L.polyline([seg.start, seg.end], {
+      color: color,
+      weight: 6,
+      opacity: 0.6,
+      dashArray: '8, 6'
+    }).addTo(map).bindPopup('<strong>' + seg.ruleId + '</strong><br>' + seg.message + '<br><em>' + seg.status.toUpperCase() + '</em>');
+  });
+})();
+</script>
+</body></html>

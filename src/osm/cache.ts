@@ -1,14 +1,42 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { bearingDegrees, pointToGeometryDistanceMeters } from "../geo";
+import {
+	AMBIGUITY_GAP_METERS,
+	BBOX_PADDING_DEGREES,
+	DEFAULT_CACHE_DIR,
+	GRID_CELL_DEGREES,
+	HIGHWAY_PRIORITY,
+	MAX_CHUNK_DEGREES,
+	MAX_SNAP_DISTANCE_METERS,
+	OSM_CACHE_FILE_NAME,
+	OVERPASS_FALLBACK,
+	OVERPASS_PRIMARY,
+	OVERPASS_TTL_MS,
+	OVERPASS_TIMEOUT_MS,
+} from "../constants";
 import type {
 	CacheStats,
 	DataSourceAvailability,
 	MatchResult,
 	Trackpoint,
 } from "../types";
+
+// Re-export constants so existing imports from cache.ts still work.
+export {
+	AMBIGUITY_GAP_METERS,
+	BBOX_PADDING_DEGREES,
+	DEFAULT_CACHE_DIR,
+	GRID_CELL_DEGREES,
+	HIGHWAY_PRIORITY,
+	MAX_CHUNK_DEGREES,
+	MAX_SNAP_DISTANCE_METERS,
+	OSM_CACHE_FILE_NAME,
+	OVERPASS_FALLBACK,
+	OVERPASS_PRIMARY,
+	OVERPASS_TTL_MS,
+	OVERPASS_TIMEOUT_MS,
+};
 import {
 	confidenceFromScore,
 	delay,
@@ -18,31 +46,6 @@ import {
 	responseBodyDetail,
 	truncateText,
 } from "../utils";
-
-/* ── constants ──────────────────────────────────────────────────────── */
-
-export const OVERPASS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-export const OVERPASS_TIMEOUT_MS = 25_000;
-export const OVERPASS_PRIMARY = "https://overpass-api.de/api/interpreter";
-export const OVERPASS_FALLBACK = "https://overpass.kumi.systems/api/interpreter";
-export const DEFAULT_CACHE_DIR = path.join(os.homedir(), ".cache", "gpxlint");
-export const OSM_CACHE_FILE_NAME = "osm-cache.json";
-export const MAX_CHUNK_DEGREES = 0.2;
-export const BBOX_PADDING_DEGREES = 0.005;
-export const GRID_CELL_DEGREES = 0.02;
-export const MAX_SNAP_DISTANCE_METERS = 100;
-export const AMBIGUITY_GAP_METERS = 15;
-export const HIGHWAY_PRIORITY: Record<string, number> = {
-	motorway: 7,
-	trunk: 6,
-	primary: 5,
-	secondary: 4,
-	tertiary: 3,
-	residential: 2,
-	unclassified: 2,
-	service: 1,
-	pedestrian: 1,
-};
 
 /* ── public types ───────────────────────────────────────────────────── */
 
@@ -59,10 +62,15 @@ export interface OsmBbox {
 	lonMax: number;
 }
 
+/** Current cache payload version. Bump when the serialized shape changes. */
+export const CACHE_VERSION = "1";
+
 export interface OsmCacheEntry {
+	version: typeof CACHE_VERSION;
+	source: string;
+	storedAt: number;
 	ways: OsmWay[];
 	provider: string;
-	fetchedAt: number;
 }
 
 export interface OsmDataOptions {
@@ -84,6 +92,7 @@ export interface OsmData {
 
 export interface OsmEnrichmentResult {
 	matches: MatchResult[];
+	osmWays?: OsmWay[];
 	availability: DataSourceAvailability;
 	providerErrors: string[];
 	cache: CacheStats;
@@ -146,9 +155,21 @@ function bboxString(b: OsmBbox): string {
 	return `${b.latMin},${b.lonMin},${b.latMax},${b.lonMax}`;
 }
 
+// Snap chunk bbox to a fixed grid so different routes covering the same area
+// produce the same cache key. Grid is 0.2° (~22km) matching MAX_CHUNK_DEGREES.
+function bboxKeyString(b: OsmBbox): string {
+	const grid = MAX_CHUNK_DEGREES;
+	return [
+		(Math.floor(b.latMin / grid) * grid).toFixed(4),
+		(Math.floor(b.lonMin / grid) * grid).toFixed(4),
+		(Math.floor(b.latMax / grid) * grid).toFixed(4),
+		(Math.floor(b.latMax / grid) * grid).toFixed(4),
+	].join(",");
+}
+
 export function bboxKey(bbox: OsmBbox): string {
 	return createHash("sha256")
-		.update(`bbox|${bboxString(bbox)}`)
+		.update(`bbox|${bboxKeyString(bbox)}`)
 		.digest("hex");
 }
 
@@ -158,6 +179,42 @@ export function bboxQuery(bbox: OsmBbox): string {
 
 /* ── cache helpers (reuse old format) ────────────────────────────────── */
 
+/** Validate and normalize a cache entry, rejecting stale versions. */
+function normalizeOsmCacheEntry(
+	key: string,
+	value: unknown,
+): OsmCacheEntry | null {
+	if (!isRecord(value)) return null;
+	const v = value as Record<string, unknown>;
+
+	// Reject entries without a version field (old format).
+	if (v.version !== CACHE_VERSION) {
+		console.warn(
+			`Cache entry "${key}" has version "${String(v.version)}"; expected "${CACHE_VERSION}". Discarding.`,
+		);
+		return null;
+	}
+
+	if (
+		typeof v.storedAt !== "number" ||
+		!Number.isFinite(v.storedAt) ||
+		typeof v.source !== "string" ||
+		typeof v.provider !== "string" ||
+		!Array.isArray(v.ways) ||
+		!v.ways.every(isOsmWay)
+	) {
+		return null;
+	}
+
+	return {
+		version: CACHE_VERSION,
+		source: v.source,
+		storedAt: v.storedAt,
+		provider: v.provider,
+		ways: v.ways,
+	};
+}
+
 export async function readOsmCache(
 	cachePath: string,
 ): Promise<Record<string, OsmCacheEntry>> {
@@ -166,21 +223,10 @@ export async function readOsmCache(
 		if (!isRecord(parsed)) throw new Error("cache file root is not an object");
 		const entries: Record<string, OsmCacheEntry> = {};
 		for (const [key, value] of Object.entries(parsed)) {
-			if (
-				!isRecord(value) ||
-				typeof value.provider !== "string" ||
-				typeof value.fetchedAt !== "number" ||
-				!Number.isFinite(value.fetchedAt) ||
-				!Array.isArray(value.ways) ||
-				!value.ways.every(isOsmWay)
-			) {
-				throw new Error(`invalid OSM cache entry "${key}"`);
+			const normalized = normalizeOsmCacheEntry(key, value);
+			if (normalized) {
+				entries[key] = normalized;
 			}
-			entries[key] = {
-				provider: value.provider,
-				fetchedAt: value.fetchedAt,
-				ways: value.ways,
-			};
 		}
 		return entries;
 	} catch (error) {

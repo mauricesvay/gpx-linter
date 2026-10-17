@@ -1,0 +1,3 @@
+{{#each sources}}
+  <li>{{this.key}}: {{this.status}} ({{this.availableItems}}/{{this.requestedItems}}){{#if this.message}} — {{{this.message}}}{{/if}}</li>
+{{/each}}

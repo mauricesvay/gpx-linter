@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { distanceMeters } from "../geo";
 import type {
 	RuleDefinition,
@@ -5,6 +7,16 @@ import type {
 	Trackpoint,
 } from "../types";
 import { numberParam, result, sameSegment, smoothElevations } from "./utils";
+
+/** Zod schema for max_slope rule parameters. */
+export const maxSlopeParamsSchema = z.object({
+	max_slope_percentage: z.number().optional(),
+	min_segment_meters: z.number().optional(),
+	min_elevation_delta_meters: z.number().optional(),
+});
+
+/** Infer max_slope params type from schema. */
+export type MaxSlopeParamsInput = z.infer<typeof maxSlopeParamsSchema>;
 
 /**
  * Detects steep uphill and downhill segments that exceed a configurable slope limit.
@@ -14,7 +26,7 @@ import { numberParam, result, sameSegment, smoothElevations } from "./utils";
  * configured threshold (default 25%), the point is flagged as a failure.
  *
  * Parameters
- *   max_slope_percentage  — maximum allowed slope in percent (default: 25)
+ *   max_slope_percentage  — maximum allowed slope in percent (default: 10)
  *   min_segment_meters    — minimum horizontal distance to consider (default: 3)
  *   min_elevation_delta_meters — minimum elevation change to consider (default: 1.5)
  *
@@ -40,7 +52,7 @@ export function maxSlope(
 				"low",
 			),
 		];
-	const threshold = numberParam(definition, "max_slope_percentage", 25);
+	const threshold = numberParam(definition, "max_slope_percentage", 10);
 	const elevations = smoothElevations(points);
 	const results: RuleResult[] = [];
 	let checked = 0;

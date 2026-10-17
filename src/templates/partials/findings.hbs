@@ -1,0 +1,8 @@
+{{#each ranges}}
+  <li class="{{status}}">
+    <strong>{{toUpperCase status}} {{toUpperCase severity}} {{ruleId}}</strong>: {{{message}}}
+    {{#if distanceFromStart}}<span>[{{{distanceFromStart}}} km]{{/if}}
+    {{#if distanceToEnd}}–[{{{distanceToEnd}}} km]{{/if}}
+    {{#if enabled}} <span class="enabled">[enabled]</span>{{else}} <span class="disabled">[disabled]</span>{{/if}}
+  </li>
+{{/each}}

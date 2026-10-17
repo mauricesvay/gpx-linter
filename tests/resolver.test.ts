@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolveRoads } from "../src/resolver";
+import { resolveRoads } from "../src/resolver/index";
 import { point } from "./fixtures";
 
 const directories: string[] = [];
@@ -44,7 +44,7 @@ const overpassFetcher = (body: string) =>
 const points = [point(48, 2.008), point(48, 2.012)];
 
 describe("road matching", () => {
-	it("returns unavailable rather than an empty success for malformed provider responses", async () => {
+	it("returns one unmatched result per point for malformed provider responses", async () => {
 		const fetcher = overpassFetcher("{bad json");
 		const result = await resolveRoads(points, {
 			provider: "overpass",
@@ -54,8 +54,8 @@ describe("road matching", () => {
 		});
 
 		expect(result.availability.status).toBe("unavailable");
-		expect(result.matches[0].status).toBe("unmatched");
-		expect(result.matches[0].confidence).toBe("unknown");
+		expect(result.matches).toHaveLength(points.length);
+		expect(result.matches.every((match) => match.status === "unmatched")).toBe(true);
 		expect(result.cache).toEqual({ hits: 0, misses: 0 });
 	});
 
@@ -73,8 +73,12 @@ describe("road matching", () => {
 			fetcher,
 		});
 
-		expect(result.matches[0].status).toBe("ambiguous");
-		expect(result.matches[0].confidence).toBe("low");
+		// P0-3: ambiguous results are preserved in ambiguousMatches.
+		// Continuity bonus resolves the 2nd point; only 1st stays ambiguous.
+		expect(result.ambiguousMatches).toBeDefined();
+		expect(result.ambiguousMatches!.length).toBe(1);
+		expect(result.ambiguousMatches![0].status).toBe("ambiguous");
+		expect(result.ambiguousMatches![0].confidence).toBe("low");
 	});
 
 	it("caches complete matches and reports cache hits on subsequent runs", async () => {
@@ -98,6 +102,48 @@ describe("road matching", () => {
 		expect(first.cache.misses).toBe(2);
 		expect(second.cache.hits).toBe(2);
 		expect(fetcher).toHaveBeenCalledTimes(1);
+	});
+
+	it("reuses the Overpass response for way evaluation and persists road matches", async () => {
+		const cacheDir = await mkdtemp(
+			path.join(os.tmpdir(), "gpxlint-road-and-way-cache-"),
+		);
+		directories.push(cacheDir);
+		const fetcher = overpassFetcher(
+			overpassResponse([{ id: 1, lat: 48, lonStart: 2.004, lonEnd: 2.02 }]),
+		);
+		const options = {
+			provider: "overpass" as const,
+			url: "https://routing.invalid",
+			cacheDir,
+			fetcher,
+			fetchOsmWays: true,
+		};
+
+		const first = await resolveRoads(points, options);
+		const second = await resolveRoads(points, options);
+
+		expect(fetcher).toHaveBeenCalledTimes(1);
+		expect(first.osmWaysAvailability?.status).toBe("complete");
+		expect(first.cache.misses).toBe(2);
+		expect(second.cache.hits).toBe(2);
+		expect(second.osmWaysAvailability?.status).toBe("complete");
+	});
+
+	it("fetches the route bbox only once when OSM way caching is disabled", async () => {
+		const fetcher = overpassFetcher(
+			overpassResponse([{ id: 1, lat: 48, lonStart: 2.004, lonEnd: 2.02 }]),
+		);
+		const result = await resolveRoads(points, {
+			provider: "overpass",
+			url: "https://routing.invalid",
+			cache: false,
+			fetchOsmWays: true,
+			fetcher,
+		});
+
+		expect(fetcher).toHaveBeenCalledTimes(1);
+		expect(result.osmWaysAvailability?.status).toBe("complete");
 	});
 
 	it("retries a transient HTTP failure once when Retry-After permits it", async () => {
@@ -133,8 +179,8 @@ describe("road matching", () => {
 
 		expect(fetcher).not.toHaveBeenCalled();
 		expect(result.availability.status).toBe("unavailable");
-		expect(result.matches[0].status).toBe("unmatched");
-		expect(result.matches[0].provider).toBe("offline");
+		expect(result.matches).toHaveLength(points.length);
+		expect(result.matches.every((match) => match.status === "unmatched")).toBe(true);
 		expect(result.providerErrors[0]).toMatch(/offline/i);
 	});
 

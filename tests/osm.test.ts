@@ -78,6 +78,44 @@ describe("OSM enrichment", () => {
 		expect(result.matches[0].tags).toBeUndefined();
 	});
 
+	it("preserves ambiguous match positions after OSM enrichment", async () => {
+		const fetcher = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					elements: [
+						{
+							type: "way",
+							id: 1,
+							tags: { highway: "residential" },
+							geometry: [
+								{ lat: 48, lon: 2 },
+								{ lat: 48, lon: 2.001 },
+							],
+						},
+						{
+							type: "way",
+							id: 2,
+							tags: { highway: "residential" },
+							geometry: [
+								{ lat: 48.00001, lon: 2 },
+								{ lat: 48.00001, lon: 2.001 },
+							],
+						},
+					],
+				}),
+				{ status: 200 },
+			),
+		);
+		const result = await enrichWithOsm(
+			[point(48, 2.0005)],
+			[{ status: "matched", confidence: "high", score: 0.9 }],
+			{ url: "https://overpass.invalid", fetcher, cache: false },
+		);
+
+		expect(result.matches).toHaveLength(1);
+		expect(result.matches[0].status).toBe("ambiguous");
+	});
+
 	it("caches complete Overpass responses for subsequent enrichment", async () => {
 		const cacheDir = await mkdtemp(
 			path.join(os.tmpdir(), "gpxlint-osm-cache-"),

@@ -1,11 +1,26 @@
 import { z } from "zod";
 
+import {
+	bikeLaneNoSameDirectionCarLaneParamsSchema,
+	contraflowBikeParamsSchema,
+	loopClosureParamsSchema,
+	maxSlopeParamsSchema,
+	missingElevationParamsSchema,
+	offRoadParamsSchema,
+	roadworksParamsSchema,
+	routeGapsParamsSchema,
+	sharpTurnsParamsSchema,
+} from "./rules";
+
 /**
  * Zod schemas for validating GPX lint configuration.
  *
  * These schemas provide runtime validation with clear error messages,
  * replacing the manual validation logic that was scattered across
  * config.ts and validateConfig().
+ *
+ * Rule-specific schemas are collocated with their respective rule files
+ * in src/rules/ and re-exported from src/rules/index.ts.
  */
 
 // Severity enum
@@ -14,7 +29,8 @@ const severitySchema = z.enum(["error", "warning", "info"]);
 // Rule severity (optional)
 const ruleSeveritySchema = severitySchema.optional();
 
-// Rule definition schema
+// Rule definition schema — composes a generic definition
+// with per-rule parameter schemas via record union.
 export const ruleDefinitionSchema = z.object({
 	enabled: z.boolean().optional(),
 	severity: ruleSeveritySchema,
@@ -63,9 +79,23 @@ export const linterConfigSchema = z.object({
 	route_context: routeContextSchema.optional(),
 });
 
+// Per-rule parameter schemas — re-exported for consumers.
+export {
+	bikeLaneNoSameDirectionCarLaneParamsSchema,
+	contraflowBikeParamsSchema,
+	loopClosureParamsSchema,
+	maxSlopeParamsSchema,
+	missingElevationParamsSchema,
+	offRoadParamsSchema,
+	roadworksParamsSchema,
+	routeGapsParamsSchema,
+	sharpTurnsParamsSchema,
+};
+
 // Export types derived from schemas
 export type LinterConfigInput = z.infer<typeof linterConfigSchema>;
 export type RuleDefinitionInput = z.infer<typeof ruleDefinitionSchema>;
 export type RoutingConfigInput = z.infer<typeof routingConfigSchema>;
 export type ReportingConfigInput = z.infer<typeof reportingConfigSchema>;
 export type RouteContextInput = z.infer<typeof routeContextSchema>;
+export type BikeLaneNoSameDirectionCarLaneParamsInput = z.infer<typeof bikeLaneNoSameDirectionCarLaneParamsSchema>;

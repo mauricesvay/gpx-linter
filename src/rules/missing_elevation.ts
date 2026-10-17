@@ -1,9 +1,19 @@
+import { z } from "zod";
+
 import type {
 	RuleDefinition,
 	RuleResult,
 	Trackpoint,
 } from "../types";
 import { numberParam, result } from "./utils";
+
+/** Zod schema for missing_elevation rule parameters. */
+export const missingElevationParamsSchema = z.object({
+	max_missing_elevation_percentage: z.number().optional(),
+});
+
+/** Infer missing_elevation params type from schema. */
+export type MissingElevationParamsInput = z.infer<typeof missingElevationParamsSchema>;
 
 /**
  * Reports the percentage of trackpoints that lack elevation data.
