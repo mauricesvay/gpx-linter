@@ -1,9 +1,7 @@
 import { bearingDegrees, distanceMeters } from "../geo";
 import type {
-	Confidence,
 	RuleDefinition,
 	RuleResult,
-	Severity,
 	Trackpoint,
 } from "../types";
 import { numberParam, result, sameSegment } from "./utils";

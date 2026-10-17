@@ -12,7 +12,7 @@ describe("v1 rules", () => {
 		];
 		const results = evaluateRules(points, {
 			rules: {
-				max_slope: { enabled: true, params: { max_percent: 10 } },
+				max_slope: { enabled: true, params: { max_slope_percentage: 10 } },
 			},
 		});
 		expect(
@@ -29,7 +29,7 @@ describe("v1 rules", () => {
 			point(0, 0.002, 0, 2),
 		];
 		const results = evaluateRules(points, {
-			rules: { max_slope: { enabled: true, params: { max_percent: 10 } } },
+			rules: { max_slope: { enabled: true, params: { max_slope_percentage: 10 } } },
 		});
 		expect(
 			results.some(

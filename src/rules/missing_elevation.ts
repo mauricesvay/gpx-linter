@@ -1,7 +1,6 @@
 import type {
 	RuleDefinition,
 	RuleResult,
-	Severity,
 	Trackpoint,
 } from "../types";
 import { numberParam, result } from "./utils";

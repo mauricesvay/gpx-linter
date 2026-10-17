@@ -37,10 +37,7 @@ export function createCli(): Command {
 		.option("--enable", "Enable the selected rule")
 		.option("--disable", "Disable the selected rule")
 		.option("--geojson <file>", "Roadworks GeoJSON file")
-		.option(
-			"--routing <provider>",
-			"Routing provider (osrm, graphhopper, offline)",
-		)
+		.option("--routing <provider>", "Routing provider (overpass, offline)")
 		.option("--url <url>", "Routing provider URL")
 		.option("-f, --format <format>", "Report format (text, json, html)")
 		.option("-o, --output <file>", "Write report to a file")
@@ -93,7 +90,7 @@ interface CheckOptions {
 	enable?: boolean;
 	disable?: boolean;
 	geojson?: string;
-	routing?: "osrm" | "graphhopper" | "offline";
+	routing?: "overpass" | "offline";
 	url?: string;
 	format?: "text" | "json" | "html";
 	output?: string;
@@ -107,11 +104,8 @@ export async function runCheck(
 	try {
 		if (options.enable && options.disable)
 			throw new Error("Use only one of --enable or --disable");
-		if (
-			options.routing &&
-			!["osrm", "graphhopper", "offline"].includes(options.routing)
-		) {
-			throw new Error("--routing must be osrm, graphhopper, or offline");
+		if (options.routing && !["overpass", "offline"].includes(options.routing)) {
+			throw new Error("--routing must be overpass or offline");
 		}
 		if (options.format && !["text", "json", "html"].includes(options.format)) {
 			throw new Error("--format must be text, json, or html");
@@ -126,16 +120,9 @@ export async function runCheck(
 			config = applyRuleOverride(config, options.rule, options.enable === true);
 		}
 		if (options.routing) {
-			const fallback =
-				config.routing?.fallback === options.routing
-					? options.routing === "osrm"
-						? "graphhopper"
-						: "osrm"
-					: config.routing?.fallback;
 			config.routing = {
 				...config.routing,
 				provider: options.routing,
-				fallback,
 			};
 		}
 		if (options.url) config.routing = { ...config.routing, url: options.url };
@@ -175,14 +162,13 @@ export async function runCheck(
 		const needsMatching =
 			enabled(config, "contraflow_bike") || enabled(config, "off_road");
 		const needsOsm = enabled(config, "contraflow_bike");
+		const provider = config.routing?.provider ?? "overpass";
+		const inlineOsm = provider === "overpass";
 		const matching = needsMatching
 			? await resolveRoads(parsed.points, {
-					provider: config.routing?.provider,
-					fallback: config.routing?.fallback,
+					provider,
 					url: config.routing?.url,
-					osrmUrl: config.routing?.osrm_url,
-					graphhopperUrl: config.routing?.graphhopper_url,
-					batchSize: config.routing?.batch_size,
+					overpassUrl: config.routing?.overpass_url,
 					cache: options.cache !== false && config.routing?.cache !== false,
 					cacheDir: config.routing?.cache_dir,
 				})
@@ -192,7 +178,7 @@ export async function runCheck(
 			console.error(`Routing provider unavailable: ${providerError}`);
 
 		const osm =
-			needsOsm && matching
+			needsOsm && matching && !inlineOsm
 				? await enrichWithOsm(parsed.points, matching.matches, {
 						url: config.routing?.overpass_url,
 						cache: options.cache !== false && config.routing?.cache !== false,
@@ -259,20 +245,24 @@ export async function runCheck(
 			roadMatching: needsMatching
 				? (matching?.availability ?? {
 						status: "unavailable",
-						source: config.routing?.provider ?? "osrm",
+						source: config.routing?.provider ?? "overpass",
 						requestedItems: parsed.points.length,
 						availableItems: 0,
 					})
 				: notRequired("routing"),
-			osm: needsOsm
-				? (osm?.availability ?? {
-						status: "unavailable",
-						source: config.routing?.overpass_url ?? "overpass",
-						requestedItems: parsed.points.length,
-						availableItems: 0,
-						message: "OSM enrichment was not run.",
-					})
-				: notRequired("overpass"),
+			osm:
+				needsOsm || (inlineOsm && needsMatching)
+					? (osm?.availability ??
+						matching?.availability ?? {
+							status: "unavailable",
+							source: config.routing?.overpass_url ?? "overpass",
+							requestedItems: parsed.points.length,
+							availableItems: 0,
+							message: inlineOsm
+								? "OSM data was not fetched (no road matching needed)."
+								: "OSM enrichment was not run.",
+						})
+					: notRequired("overpass"),
 			roadworks: roadworksAvailability,
 			incomplete: false,
 		};

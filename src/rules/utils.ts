@@ -60,6 +60,26 @@ import type {
  *
  *   Validates that a value conforms to the GeoJSON FeatureCollection
  *   schema used by the roadworks rule.
+ *
+ * ──────────────────────────────────────────────────────────────────────
+ * isConfidentMatch() — Checks whether a road match is usable by rules.
+ *
+ *   A match is "confident" when its status is `matched` and its
+ *   confidence is `high` or `medium`. Used by the road-dependent rules
+ *   (contraflow_bike, off_road) to decide when a point can be evaluated.
+ *
+ * ──────────────────────────────────────────────────────────────────────
+ * uncertaintyResult() — Builds an `unknown` result for a non-confident match.
+ *
+ *   When a road match is not confident, rules emit this result so the
+ *   point is reported as unevaluated rather than silently passed.
+ *
+ * ──────────────────────────────────────────────────────────────────────
+ * buildSummaryResult() — Assembles per-point results plus a pass summary.
+ *
+ *   If a rule produced no failures or uncertainties, appends a single
+ *   `pass` (or `unknown` when nothing was evaluated) result so every
+ *   rule always reports at least one outcome.
  */
 
 export function result(
@@ -136,6 +156,66 @@ export function isFeatureCollection(
 	value: unknown,
 ): value is GeoJsonFeatureCollection {
 	return isGeoJsonFeatureCollection(value);
+}
+
+export function isConfidentMatch(match: MatchResult): boolean {
+	return (
+		match.status === "matched" &&
+		(match.confidence === "high" || match.confidence === "medium")
+	);
+}
+
+export function uncertaintyResult(
+	ruleId: string,
+	definition: RuleDefinition,
+	point: Trackpoint,
+	match: MatchResult,
+): RuleResult {
+	const confidence = match.confidence === "unknown" ? "low" : match.confidence;
+	return result(
+		ruleId,
+		definition,
+		"error",
+		"unknown",
+		match.reason ??
+			`Road match is ${match.status} with ${match.confidence} confidence.`,
+		confidence,
+		point,
+		{
+			matchStatus: match.status,
+			matchConfidence: match.confidence,
+			candidates: match.candidates,
+		},
+		{ provider: match.provider ?? "unknown" },
+	);
+}
+
+export function buildSummaryResult(
+	ruleId: string,
+	definition: RuleDefinition,
+	failures: RuleResult[],
+	uncertainties: RuleResult[],
+	evaluated: number,
+	passMessage: string,
+): RuleResult[] {
+	const out = [...failures, ...uncertainties];
+	if (out.length === 0)
+		out.push(
+			result(
+				ruleId,
+				definition,
+				"error",
+				evaluated > 0 ? "pass" : "unknown",
+				evaluated > 0
+					? passMessage
+					: "No sufficiently confident road matches were available.",
+				evaluated > 0 ? "high" : "low",
+				undefined,
+				{ evaluatedPoints: evaluated },
+				{ provider: "road-matching" },
+			),
+		);
+	return out;
 }
 
 export function smoothElevations(points: Trackpoint[]): (number | null)[] {

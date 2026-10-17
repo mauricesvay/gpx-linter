@@ -15,19 +15,23 @@
  *
  * Helpers (utils):
  *   result, numberParam, sameSegment, smoothElevations,
- *   hasBikeContraflow, isOneWay, isTwoWay, isFeatureCollection
+ *   hasBikeContraflow, isOneWay, isTwoWay, isFeatureCollection,
+ *   isConfidentMatch, uncertaintyResult, buildSummaryResult
  */
 
 export { evaluateRules } from "../engine";
 export { loopClosure } from "./loop_closure";
 export { maxSlope } from "./max_slope";
 export { missingElevation } from "./missing_elevation";
-export { evaluateContraflowBike, evaluateOffRoad } from "./road_rules";
+export { evaluateContraflowBike } from "./contraflow_bike";
+export { evaluateOffRoad } from "./off_road";
 export { roadworks } from "./roadworks";
 export { routeGaps } from "./route_gaps";
 export { sharpTurns } from "./sharp_turns";
 export {
+	buildSummaryResult,
 	hasBikeContraflow,
+	isConfidentMatch,
 	isFeatureCollection,
 	isOneWay,
 	isTwoWay,
@@ -35,4 +39,5 @@ export {
 	result,
 	sameSegment,
 	smoothElevations,
+	uncertaintyResult,
 } from "./utils";

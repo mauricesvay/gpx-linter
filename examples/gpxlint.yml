@@ -3,7 +3,7 @@ rules:
     enabled: true
     severity: error
     params:
-      max_percent: 10
+      max_slope_percentage: 25
       min_segment_meters: 3
       min_elevation_delta_meters: 1.5
 
@@ -18,11 +18,12 @@ rules:
       buffer_meters: 5
 
   sharp_turn:
-    enabled: true
+    enabled: false
     severity: warning
     params:
       max_angle: 60
       min_segment_meters: 5
+      min_heading_change_degrees: 0
 
   off_road:
     enabled: false
@@ -34,16 +35,16 @@ rules:
     enabled: true
     severity: info
     params:
-      max_missing_percent: 20
+      max_missing_elevation_percentage: 50
 
   route_gaps:
-    enabled: true
+    enabled: false
     severity: info
     params:
       max_gap_meters: 500
 
   loop_closure:
-    enabled: true
+    enabled: false
     severity: info
     params:
       max_return_distance_meters: 100
@@ -53,11 +54,7 @@ route_context:
   ferry_allowed: false
 
 routing:
-  provider: osrm
-  fallback: graphhopper
-  osrm_url: https://router.project-osrm.org
-  graphhopper_url: http://localhost:8989
-  batch_size: 10
+  provider: overpass
   cache: true
 
 reporting:

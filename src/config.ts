@@ -7,7 +7,6 @@ import {
 	type reportingConfigSchema,
 	type routeContextSchema,
 	type routingConfigSchema,
-	ruleDefinitionSchema,
 } from "./configSchema";
 import type { LinterConfig, RuleDefinition, Severity } from "./types";
 import { errorMessage, isRecord } from "./utils";
@@ -17,7 +16,11 @@ export const DEFAULT_CONFIG: LinterConfig = {
 		max_slope: {
 			enabled: true,
 			severity: "error",
-			params: { max_percent: 10 },
+			params: {
+				max_slope_percentage: 25,
+				min_segment_meters: 3,
+				min_elevation_delta_meters: 1.5,
+			},
 		},
 		contraflow_bike: { enabled: true, severity: "error" },
 		roadworks: {
@@ -28,7 +31,11 @@ export const DEFAULT_CONFIG: LinterConfig = {
 		sharp_turn: {
 			enabled: false,
 			severity: "warning",
-			params: { max_angle: 60, min_segment_meters: 5 },
+			params: {
+				max_angle: 60,
+				min_segment_meters: 5,
+				min_heading_change_degrees: 0,
+			},
 		},
 		off_road: {
 			enabled: false,
@@ -38,7 +45,7 @@ export const DEFAULT_CONFIG: LinterConfig = {
 		missing_elevation: {
 			enabled: true,
 			severity: "info",
-			params: { max_missing_percent: 20 },
+			params: { max_missing_elevation_percentage: 50 },
 		},
 		route_gaps: {
 			enabled: false,
@@ -52,16 +59,13 @@ export const DEFAULT_CONFIG: LinterConfig = {
 		},
 	},
 	routing: {
-		provider: "osrm",
-		fallback: "graphhopper",
-		graphhopper_url: "http://localhost:8989",
-		osrm_url: "https://router.project-osrm.org",
-		batch_size: 10,
+		provider: "overpass",
 		cache: true,
 	},
 	reporting: { format: "text", color: "auto" },
 	route_context: { loop_expected: false, ferry_allowed: false },
 };
+Object.freeze(DEFAULT_CONFIG);
 
 export async function loadConfig(configPath?: string): Promise<LinterConfig> {
 	if (!configPath) return structuredClone(DEFAULT_CONFIG);
@@ -137,16 +141,6 @@ export async function loadConfig(configPath?: string): Promise<LinterConfig> {
 	// Merge routing
 	if (validated.routing !== undefined) {
 		config.routing = mergeRouting(config.routing, validated.routing);
-		if (
-			validated.routing.provider !== undefined &&
-			validated.routing.fallback === undefined &&
-			config.routing?.fallback === config.routing?.provider
-		) {
-			config.routing = {
-				...config.routing,
-				fallback: config.routing?.provider === "osrm" ? "graphhopper" : "osrm",
-			};
-		}
 	}
 
 	// Merge reporting
@@ -193,23 +187,11 @@ function mergeRouting(
 	if (raw.provider !== undefined) {
 		result.provider = raw.provider;
 	}
-	if (raw.fallback !== undefined) {
-		result.fallback = raw.fallback;
-	}
-	for (const key of [
-		"url",
-		"graphhopper_url",
-		"osrm_url",
-		"overpass_url",
-		"cache_dir",
-	] as const) {
+	for (const key of ["url", "overpass_url", "cache_dir"] as const) {
 		const value = raw[key];
 		if (value !== undefined && value !== "") {
 			result[key] = value;
 		}
-	}
-	if (raw.batch_size !== undefined) {
-		result.batch_size = raw.batch_size;
 	}
 	if (raw.cache !== undefined) {
 		result.cache = raw.cache;

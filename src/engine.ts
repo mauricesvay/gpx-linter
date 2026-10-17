@@ -1,10 +1,4 @@
 import {
-	bearingDegrees,
-	distanceMeters,
-	isGeoJsonFeatureCollection,
-	isWithinFeature,
-} from "./geo";
-import {
 	evaluateContraflowBike,
 	evaluateOffRoad,
 	loopClosure,
@@ -16,11 +10,7 @@ import {
 	sharpTurns,
 } from "./rules";
 import type {
-	Confidence,
-	GeoJsonFeatureCollection,
-	MatchResult,
 	RuleContext,
-	RuleDefinition,
 	RuleResult,
 	Severity,
 	Trackpoint,

@@ -1,9 +1,7 @@
 import { distanceMeters } from "../geo";
 import type {
-	Confidence,
 	RuleDefinition,
 	RuleResult,
-	Severity,
 	Trackpoint,
 } from "../types";
 import { numberParam, result, sameSegment, smoothElevations } from "./utils";

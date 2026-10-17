@@ -148,12 +148,8 @@ export type RuleParams =
 export interface LinterConfig {
 	rules: Record<string, RuleDefinition>;
 	routing?: {
-		provider?: "osrm" | "graphhopper" | "offline";
-		fallback?: "osrm" | "graphhopper";
+		provider?: "overpass" | "offline";
 		url?: string;
-		graphhopper_url?: string;
-		osrm_url?: string;
-		batch_size?: number;
 		overpass_url?: string;
 		cache?: boolean;
 		cache_dir?: string;

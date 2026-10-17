@@ -2,14 +2,14 @@
 
 > **Goal:** A configurable rule-based linter that validates GPX bike routes against a set of checks (slope, infrastructure, road works, etc.).
 
-**Architecture:** CLI-first tool that loads a GPX file, resolves trackpoints to road network segments (via OSRM/GraphHopper/Overpass), and runs a pluggable rule engine. Rules are declared in a YAML config — add, remove, or disable them without code changes.
+**Architecture:** CLI-first tool that loads a GPX file, resolves trackpoints to road network segments (via Overpass: OSM highway geometry fetched and snapped locally), and runs a pluggable rule engine. Rules are declared in a YAML config — add, remove, or disable them without code changes.
 
 **Tech Stack:**
 - **TypeScript 5+** (Node.js 20+)
 - `gpx` npm package (GPX XML parsing) or manual XML parsing with `fast-xml-parser`
 - `@turf/turf` (haversine, bearing, point-to-line distance, buffer, booleanWithin)
 - `@types/node` (native `fetch`, `Buffer`, `fs`)
-- GraphHopper or OSRM for road network resolution
+- Overpass API for OSM way geometry and tags (road network resolution is local snapping)
 - `js-yaml` for rule config
 - `commander` for CLI
 
@@ -449,7 +449,7 @@ interface RuleResult {
 - **Config:** `max_distance_meters: 50` (default 50)
 - **How:** After road resolution, check distance from each point to its matched road segment. Flag if > `max_distance_meters`.
 - **Severity:** `error` (configurable to `warning`)
-- **Data needed:** Road resolution (OSRM/GraphHopper)
+- **Data needed:** Road resolution (Overpass)
 - **Complexity:** Low
 - **Output:** lat/lng, distance to nearest road, road name.
 
@@ -539,7 +539,7 @@ interface RuleResult {
 - **Config:** `check_endpoints: true`, `lookahead_points: 10`
 - **How:** Check the last N trackpoints. If the final road segment connects to an OSM node with degree 1 (no continuing road), flag it.
 - **Severity:** `warning`
-- **Data needed:** Road resolution (OSRM/GraphHopper) + OSM node degree
+- **Data needed:** Road resolution (Overpass) + OSM node degree
 - **Complexity:** Medium
 - **Output:** lat/lng of the dead end, road name, road type.
 
@@ -678,9 +678,9 @@ rules:
     severity: error
 
 routing:
-  provider: osrm        # osrm | graphhopper | offline
-  url: "http://localhost:5000"
-  batch_size: 50        # points per API call
+  provider: overpass    # overpass | offline
+  url: "https://overpass-api.de/api/interpreter"
+  overpass_url: "https://overpass-api.de/api/interpreter"
 
 reporting:
   format: text          # text | json | html
@@ -702,7 +702,7 @@ gpxlint check route.gpx --rule surface_type --enable
 
 # Inline overrides
 gpxlint check route.gpx --geojson roadworks.geojson
-gpxlint check route.gpx --routing osrm --url http://osrm.local
+gpxlint check route.gpx --routing overpass --url https://overpass.local/api/interpreter
 
 # Rule management
 gpxlint rules list          # show all rules with status
@@ -1015,7 +1015,7 @@ gpxlint/
 │   │   ├── index.ts          # Core exports (Rule, Violation, Trackpoint, etc.)
 │   │   ├── cli.ts            # Commander CLI
 │   │   ├── gpxParser.ts      # GPX → trackpoints
-│   │   ├── resolver.ts       # Trackpoints → road segments (GraphHopper/OSRM)
+│   │   ├── resolver.ts       # Trackpoints → road segments (Overpass + local snap)
 │   │   ├── rules/
 │   │   │   ├── base.ts       # Rule interface (Rule abstract class)
 │   │   │   ├── maxSlope.ts   # R1
@@ -1058,22 +1058,17 @@ gpxlint/
 
 ## Open Questions — Resolved
 
-### 1. Routing API: GraphHopper (primary) + OSRM (fallback)
+### 1. Routing API: Overpass (current implementation)
 
-**Decision: GraphHopper as primary, OSRM as fallback.**
+> **Superseded:** the original design used GraphHopper (primary) + OSRM (fallback) map-matching APIs. The implemented tool drops both; road matching now fetches OSM highway geometry from **Overpass** and snaps trackpoints locally. The historical rationale is kept below.
+
+**Decision (historical): GraphHopper as primary, OSRM as fallback.**
 
 - **GraphHopper** has a dedicated bike routing profile that understands bike-specific constraints (cycleways, steps, ferries, elevation-aware routing). It returns richer metadata per segment (surface, highway, bicycle, oneway, maxspeed) than OSRM.
 - **OSRM** is faster and lighter, but its default profile is car-oriented. The bike profile exists but is less mature.
 - **Overpass API** doesn't do routing — it just queries OSM tags. Can be used as a supplementary tool for specific tag lookups, but not as the primary resolution engine.
 
-**Config:**
-```yaml
-routing:
-  primary: graphhopper
-  fallback: osrm
-  graphhopper_url: "http://localhost:8989"
-  osrm_url: "http://localhost:5000"
-```
+**Config (historical — replaced by `provider: overpass` in the implementation):**
 
 **Fallback strategy:** If GraphHopper is unreachable, try OSRM. Accept that OSRM returns less metadata (surface, traffic proxy may have lower signal).
 
@@ -1123,7 +1118,9 @@ The GeoJSON should follow this schema:
 
 ### 4. Batch Size for Routing API
 
-**Decision: Default 50 points per batch, configurable.**
+> **Superseded:** batching applied to the OSRM/GraphHopper map-matching APIs, which the implementation no longer uses. Overpass queries are chunked by bounding box internally instead.
+
+**Decision (historical): Default 50 points per batch, configurable.**
 
 - GraphHopper `table` endpoint accepts up to 100 points per request. OSRM `table` accepts up to 300.
 - 50 is a safe middle ground that works for both providers without hitting limits.
@@ -1182,7 +1179,7 @@ routing:
 | R7 Long Climb | Medium complexity, needs elevation + road resolution. |
 | R8 Total Elevation Gain | Low complexity, but needs elevation (v2 fill). |
 | R9 Descent Warning | Medium complexity, needs elevation. |
-| R10 Surface Type | Needs road resolution + rich metadata (GraphHopper). |
+| R10 Surface Type | Needs road resolution + rich metadata (Overpass/OSM tags). |
 | R11 Road Classification | Needs road resolution. |
 | R12 Traffic Proxy | Needs road resolution + bike tag. |
 | R14 Dead End | Medium complexity, needs OSM node degree. |
@@ -1373,7 +1370,7 @@ This sequencing reduces false positives and keeps the first version credible.
 ## Success Criteria (v1)
 
 - [ ] Parses valid GPX files (multiple tracks/segments)
-- [ ] Resolves trackpoints to road segments via GraphHopper (with OSRM fallback)
+- [x] Resolves trackpoints to road segments via Overpass (OSRM/GraphHopper dropped)
 - [ ] R1 (max slope) correctly flags segments above threshold
 - [ ] R2 (contraflow) correctly flags one-way violations without bike exception
 - [ ] R3 (roadworks) correctly flags points within buffered GeoJSON zones

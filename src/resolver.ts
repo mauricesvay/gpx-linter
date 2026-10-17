@@ -2,41 +2,22 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { distanceMeters } from "./geo";
+import { fetchOverpassBboxWays, routeBbox, snapPointsToWays } from "./osm";
 import type {
 	CacheStats,
 	DataSourceAvailability,
 	MatchResult,
 	Trackpoint,
 } from "./types";
-import {
-	asRecord,
-	delay,
-	isRecord,
-	message,
-	retryAfterMilliseconds,
-	splitIntoSegments,
-} from "./utils";
+import { isRecord, message, truncateText } from "./utils";
 
 const ROAD_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const REQUEST_TIMEOUT_MS = 10_000;
-const MAX_SNAP_DISTANCE_METERS = 100;
+const DEFAULT_CACHE_DIR = path.join(os.homedir(), ".cache", "gpxlint");
+const CACHE_FILE_NAME = "cache.json";
 
 interface CacheEntry {
 	storedAt: number;
 	result: MatchResult;
-}
-
-interface ResolverOptions {
-	provider?: "osrm" | "graphhopper" | "offline";
-	fallback?: "osrm" | "graphhopper";
-	url?: string;
-	osrmUrl?: string;
-	graphhopperUrl?: string;
-	batchSize?: number;
-	cache?: boolean;
-	cacheDir?: string;
-	fetcher?: typeof fetch;
 }
 
 export interface ResolutionResult {
@@ -49,14 +30,21 @@ export interface ResolutionResult {
 
 export async function resolveRoads(
 	points: Trackpoint[],
-	options: ResolverOptions = {},
+	options: {
+		provider?: "overpass" | "offline";
+		url?: string;
+		overpassUrl?: string;
+		cache?: boolean;
+		cacheDir?: string;
+		fetcher?: typeof fetch;
+	} = {},
 ): Promise<ResolutionResult> {
 	const cacheStats = { hits: 0, misses: 0 };
 	const errors: string[] = [];
 	const cacheEnabled = options.cache !== false;
 	const cachePath = path.join(
-		options.cacheDir ?? path.join(os.homedir(), ".cache", "gpxlint"),
-		"cache.json",
+		options.cacheDir ?? DEFAULT_CACHE_DIR,
+		CACHE_FILE_NAME,
 	);
 	let cache: Record<string, CacheEntry> = {};
 	let cacheError: string | undefined;
@@ -94,24 +82,25 @@ export async function resolveRoads(
 		}
 	}
 
-	let provider = options.provider ?? "osrm";
-	const primary = provider;
-	if (options.url) {
-		if (provider === "osrm") options.osrmUrl = options.url;
-		else options.graphhopperUrl = options.url;
+	if (misses.length === 0) {
+		return buildResult(
+			matches as MatchResult[],
+			cacheStats,
+			errors,
+			cacheError,
+			options.provider ?? "overpass",
+		);
 	}
-	if (provider !== "offline" && misses.length > 0) {
-		let resolved = await resolveProvider(misses, provider, options);
-		if (resolved.error) errors.push(`${provider}: ${resolved.error}`);
-		if (
-			resolved.results === null &&
-			options.fallback &&
-			options.fallback !== provider
-		) {
-			provider = options.fallback;
-			resolved = await resolveProvider(misses, provider, options);
-			if (resolved.error) errors.push(`${provider}: ${resolved.error}`);
-		}
+
+	const provider = options.provider ?? "overpass";
+	if (provider === "overpass") {
+		const resolved = await resolveWithOverpass(misses, {
+			overpassUrl: options.overpassUrl ?? options.url,
+			cache: options.cache,
+			cacheDir: options.cacheDir,
+			fetcher: options.fetcher,
+		});
+		if (resolved.error) errors.push(`overpass: ${resolved.error}`);
 		if (resolved.results) {
 			resolved.results.forEach((match, index) => {
 				matches[missIndexes[index]] = match;
@@ -119,36 +108,8 @@ export async function resolveRoads(
 					cache[cacheKey(misses[index])] = { storedAt: now, result: match };
 				}
 			});
-			if (options.fallback && options.fallback !== provider) {
-				const uncoveredIndexes = resolved.results
-					.map((match, index) => (match.status === "unmatched" ? index : -1))
-					.filter((index) => index >= 0);
-				if (uncoveredIndexes.length > 0) {
-					const fallbackProvider = options.fallback;
-					const fallbackResult = await resolveProvider(
-						uncoveredIndexes.map((index) => misses[index]),
-						fallbackProvider,
-						options,
-					);
-					if (fallbackResult.error)
-						errors.push(`${fallbackProvider}: ${fallbackResult.error}`);
-					if (fallbackResult.results) {
-						fallbackResult.results.forEach((match, index) => {
-							const missIndex = uncoveredIndexes[index];
-							matches[missIndexes[missIndex]] = match;
-							if (cacheEnabled && isUsableCacheEntry(match)) {
-								cache[cacheKey(misses[missIndex])] = {
-									storedAt: now,
-									result: match,
-								};
-							}
-						});
-						provider = fallbackProvider;
-					}
-				}
-			}
 		}
-	} else if (misses.length > 0) {
+	} else {
 		errors.push("offline: No offline road-matching backend is configured.");
 	}
 
@@ -161,7 +122,7 @@ export async function resolveRoads(
 				score: 0,
 				reason:
 					"No usable match was returned by the configured routing provider.",
-				provider: primary,
+				provider,
 			},
 	);
 	if (cacheEnabled && cacheStats.misses > 0) {
@@ -172,322 +133,51 @@ export async function resolveRoads(
 			cacheError = `Unable to write road cache: ${message(error)}`;
 		}
 	}
-
-	const availableItems = finalMatches.filter(
-		(match) => match.status === "matched",
-	).length;
-	const unknownItems = finalMatches.filter(
-		(match) =>
-			match.status !== "matched" ||
-			match.confidence === "low" ||
-			match.confidence === "unknown",
-	).length;
-	const availability: DataSourceAvailability = {
-		status:
-			points.length === 0 || availableItems === 0
-				? "unavailable"
-				: unknownItems > 0
-					? "partial"
-					: "complete",
-		source: provider,
-		requestedItems: points.length,
-		availableItems,
-	};
-	if (errors.length > 0) availability.message = errors.join("; ");
-	else if (unknownItems > 0)
-		availability.message = `${unknownItems} trackpoint(s) could not be matched with sufficient confidence.`;
-	return {
-		matches: finalMatches,
-		availability,
-		cache: cacheStats,
-		providerErrors: errors,
-		cacheError,
-	};
+	return buildResult(finalMatches, cacheStats, errors, cacheError, provider);
 }
 
-async function resolveProvider(
+/* ── provider ───────────────────────────────────────────────────────── */
+
+async function resolveWithOverpass(
 	points: Trackpoint[],
-	provider: "osrm" | "graphhopper",
-	options: ResolverOptions,
+	options: {
+		overpassUrl?: string;
+		cache?: boolean;
+		cacheDir?: string;
+		fetcher?: typeof fetch;
+	},
 ): Promise<{ results: MatchResult[] | null; error?: string }> {
-	const baseUrl =
-		provider === "osrm"
-			? (options.osrmUrl ?? "http://router.project-osrm.org/")
-			: (options.graphhopperUrl ?? "http://localhost:8989");
-	const batchSize = Math.max(
-		1,
-		Math.min(options.batchSize ?? 10, provider === "osrm" ? 10 : 100),
-	);
-	const output: MatchResult[] = [];
-	const fetcher = options.fetcher ?? fetch;
-	for (const segment of splitIntoSegments(points as Trackpoint[])) {
-		for (let start = 0; start < segment.length; start += batchSize) {
-			const batch = segment.slice(start, start + batchSize);
-			if (batch.length === 1) {
-				output.push({
-					status: "unmatched",
-					confidence: "unknown",
-					score: 0,
-					reason:
-						"Single-point segments cannot be matched against a routing provider.",
-					provider,
-				});
-				continue;
-			}
-			const request =
-				provider === "osrm"
-					? osrmRequest(baseUrl, batch)
-					: graphhopperRequest(baseUrl, batch);
-			const response = await requestJson(request.url, request.init, fetcher);
-			if (response.error) return { results: null, error: response.error };
-			let parsed: unknown;
-			try {
-				parsed = JSON.parse(response.text);
-			} catch {
-				return { results: null, error: "Provider returned malformed JSON." };
-			}
-			const batchResults =
-				provider === "osrm"
-					? parseOsrm(parsed, batch)
-					: parseGraphhopper(parsed, batch);
-			if (!batchResults)
-				return {
-					results: null,
-					error:
-						"Provider response was invalid or did not correspond to the requested coordinates.",
-				};
-			output.push(...batchResults.map((result) => ({ ...result, provider })));
-		}
+	const bbox = routeBbox(points);
+	const data = await fetchOverpassBboxWays(bbox, {
+		url: options.overpassUrl,
+		fetcher: options.fetcher,
+		cache: options.cache,
+		cacheDir: options.cacheDir,
+	});
+	if (data.ways === null) {
+		return {
+			results: null,
+			error: data.errors.join("; ") || "All Overpass queries failed.",
+		};
 	}
-	return { results: output };
-}
-
-function osrmRequest(
-	baseUrl: string,
-	points: Trackpoint[],
-): { url: string; init?: RequestInit } {
-	const coordinates = points
-		.map((point) => `${point.lon},${point.lat}`)
-		.join(";");
-	const url = new URL(`/match/v1/driving/${coordinates}`, ensureUrl(baseUrl));
-	url.searchParams.set("overview", "false");
-	url.searchParams.set("annotations", "true");
-	return { url: url.toString() };
-}
-
-function graphhopperRequest(
-	baseUrl: string,
-	points: Trackpoint[],
-): { url: string; init: RequestInit } {
-	const url = new URL("/match", ensureUrl(baseUrl));
-	url.searchParams.set("profile", "bike");
-	url.searchParams.set("points_encoded", "false");
-	const body = points
-		.map((point) => `point=${encodeURIComponent(`${point.lat},${point.lon}`)}`)
-		.join("&");
-	return {
-		url: url.toString(),
-		init: {
-			method: "POST",
-			headers: { "content-type": "application/x-www-form-urlencoded" },
-			body,
-		},
-	};
-}
-
-async function requestJson(
-	url: string,
-	init: RequestInit | undefined,
-	fetcher: typeof fetch,
-): Promise<{ text: string; error?: string }> {
-	let lastError = "Request failed.";
-	for (let attempt = 0; attempt < 2; attempt++) {
-		let response: Response;
-		try {
-			response = await fetcher(url, {
-				...init,
-				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-			});
-		} catch (error) {
-			lastError = message(error);
-			if (attempt === 0 && isRetryableNetworkError(error)) {
-				await delay(1000);
-				continue;
-			}
-			return { text: "", error: lastError };
-		}
-		if (response.ok) {
-			try {
-				return { text: await response.text() };
-			} catch (error) {
-				return {
-					text: "",
-					error: `Unable to read provider response: ${message(error)}`,
-				};
-			}
-		}
-		lastError = `HTTP ${response.status} ${response.statusText}`.trim();
-		const retryable = response.status === 429 || response.status >= 500;
-		if (!retryable || attempt > 0) return { text: "", error: lastError };
-		const waitMs = retryAfterMilliseconds(response.headers.get("retry-after"));
-		if (waitMs === null) return { text: "", error: lastError };
-		await delay(waitMs);
+	const results = snapPointsToWays(points, data.ways, "overpass");
+	const failed = data.totalChunks - data.completedChunks;
+	if (failed > 0) {
+		return {
+			results,
+			error: truncateText(
+				`${failed} of ${data.totalChunks} Overpass chunks failed; nearby points may be unmatched. ${data.errors.slice(0, 3).join("; ")}`,
+				200,
+			),
+		};
 	}
-	return { text: "", error: lastError };
+	return { results };
 }
 
-function parseOsrm(
-	payload: unknown,
-	points: Trackpoint[],
-): MatchResult[] | null {
-	const root = asRecord(payload);
-	if (
-		!root ||
-		root.code !== "Ok" ||
-		!Array.isArray(root.tracepoints) ||
-		!Array.isArray(root.matchings)
-	)
-		return null;
-	if (root.tracepoints.length !== points.length) return null;
-	const results: MatchResult[] = [];
-	for (const [index, raw] of root.tracepoints.entries()) {
-		if (raw === null) {
-			results.push({
-				status: "unmatched",
-				confidence: "unknown",
-				score: 0,
-				reason: "OSRM could not match this trackpoint.",
-			});
-			continue;
-		}
-		const tracepoint = asRecord(raw);
-		const location = tracepoint?.location;
-		const matchIndex = tracepoint?.matchings_index;
-		if (
-			!tracepoint ||
-			!Array.isArray(location) ||
-			location.length < 2 ||
-			!isFiniteCoordinate(location[0]) ||
-			!isFiniteCoordinate(location[1])
-		)
-			return null;
-		const snappedDistance = distanceMeters(points[index], {
-			lon: location[0],
-			lat: location[1],
-		});
-		if (snappedDistance > MAX_SNAP_DISTANCE_METERS) return null;
-		if (typeof matchIndex !== "number" || !Number.isInteger(matchIndex))
-			return null;
-		const matching = asRecord(root.matchings[matchIndex]);
-		const score = matching?.confidence;
-		if (
-			typeof score !== "number" ||
-			!Number.isFinite(score) ||
-			score < 0 ||
-			score > 1
-		)
-			return null;
-		const confidence = confidenceFromScore(score);
-		const waypointIndex = tracepoint.waypoint_index;
-		const roadId =
-			typeof waypointIndex === "number"
-				? `osrm:${matchIndex}:${waypointIndex}`
-				: `osrm:${index}`;
-		const distance = snappedDistance;
-		results.push({
-			status: confidence === "low" ? "ambiguous" : "matched",
-			confidence,
-			score,
-			distanceToRoad: distance,
-			reason:
-				confidence === "low"
-					? "OSRM match confidence is below the medium-confidence threshold."
-					: undefined,
-			roadId,
-			candidates: [{ roadId, score, distanceToRoad: distance }],
-		});
-	}
-	return results;
-}
-
-function parseGraphhopper(
-	payload: unknown,
-	points: Trackpoint[],
-): MatchResult[] | null {
-	const root = asRecord(payload);
-	const matchingResponse = asRecord(root?.map_matching) ?? root;
-	if (
-		!matchingResponse ||
-		!Array.isArray(matchingResponse.matchings) ||
-		!Array.isArray(matchingResponse.tracepoints)
-	)
-		return null;
-	if (matchingResponse.tracepoints.length !== points.length) return null;
-	const output: MatchResult[] = [];
-	for (const [index, raw] of matchingResponse.tracepoints.entries()) {
-		if (raw === null) {
-			output.push({
-				status: "unmatched",
-				confidence: "unknown",
-				score: 0,
-				reason: "GraphHopper could not match this trackpoint.",
-			});
-			continue;
-		}
-		const tracepoint = asRecord(raw);
-		const matchingIndex =
-			tracepoint?.matchings_index ?? tracepoint?.matching_index;
-		if (
-			!tracepoint ||
-			typeof matchingIndex !== "number" ||
-			!Number.isInteger(matchingIndex)
-		)
-			return null;
-		const matching = asRecord(matchingResponse.matchings[matchingIndex]);
-		if (
-			!matching ||
-			typeof matching.confidence !== "number" ||
-			!Number.isFinite(matching.confidence)
-		)
-			return null;
-		const confidence = confidenceFromScore(matching.confidence);
-		const roadId = `graphhopper:${matchingIndex}:${index}`;
-		output.push({
-			status: confidence === "low" ? "ambiguous" : "matched",
-			confidence,
-			score: matching.confidence,
-			roadId,
-			distanceToRoad:
-				typeof tracepoint.distance === "number"
-					? tracepoint.distance
-					: undefined,
-			reason:
-				confidence === "low"
-					? "GraphHopper match confidence is below the medium-confidence threshold."
-					: undefined,
-			candidates: [{ roadId, score: matching.confidence }],
-		});
-	}
-	return output;
-}
-
-function confidenceFromScore(score: number): MatchResult["confidence"] {
-	if (score >= 0.8) return "high";
-	if (score >= 0.6) return "medium";
-	return "low";
-}
-
-function isRetryableNetworkError(error: unknown): boolean {
-	return (
-		error instanceof Error &&
-		(error.name === "TimeoutError" ||
-			error.name === "AbortError" ||
-			error instanceof TypeError)
-	);
-}
+/* ── cache ──────────────────────────────────────────────────────────── */
 
 function isUsableCacheEntry(result: unknown): result is MatchResult {
-	const entry = asRecord(result);
+	const entry = isRecord(result) ? result : null;
 	return (
 		entry !== null &&
 		entry.status === "matched" &&
@@ -521,15 +211,47 @@ async function readCache(
 		}
 		return entries;
 	} catch (error) {
-		if (isRecord(error) && error.code === "ENOENT") return {};
+		if (isRecord(error) && (error as Record<string, string>).code === "ENOENT")
+			return {};
 		throw error;
 	}
 }
 
-function ensureUrl(value: string): string {
-	return value.endsWith("/") ? value : `${value}/`;
-}
-
-function isFiniteCoordinate(value: unknown): value is number {
-	return typeof value === "number" && Number.isFinite(value);
+function buildResult(
+	finalMatches: MatchResult[],
+	cacheStats: CacheStats,
+	errors: string[],
+	cacheError: string | undefined,
+	provider: string,
+): ResolutionResult {
+	const availableItems = finalMatches.filter(
+		(match) => match.status === "matched",
+	).length;
+	const unknownItems = finalMatches.filter(
+		(match) =>
+			match.status !== "matched" ||
+			match.confidence === "low" ||
+			match.confidence === "unknown",
+	).length;
+	const availability: DataSourceAvailability = {
+		status:
+			finalMatches.length === 0 || availableItems === 0
+				? "unavailable"
+				: unknownItems > 0
+					? "partial"
+					: "complete",
+		source: provider,
+		requestedItems: finalMatches.length,
+		availableItems,
+	};
+	if (errors.length > 0) availability.message = errors.join("; ");
+	else if (unknownItems > 0)
+		availability.message = `${unknownItems} trackpoint(s) could not be matched with sufficient confidence.`;
+	return {
+		matches: finalMatches,
+		availability,
+		cache: cacheStats,
+		providerErrors: errors,
+		cacheError,
+	};
 }

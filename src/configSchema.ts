@@ -24,36 +24,19 @@ export const ruleDefinitionSchema = z.object({
 });
 
 // Routing provider
-const routingProviderSchema = z.enum(["osrm", "graphhopper", "offline"]);
-const fallbackProviderSchema = z.enum(["osrm", "graphhopper"]);
+const routingProviderSchema = z.enum(["overpass", "offline"]);
 
 // URL validation helper
 const httpUrlSchema = z.string().url().or(z.literal(""));
 
 // Routing configuration schema
-export const routingConfigSchema = z
-	.object({
-		provider: routingProviderSchema.optional(),
-		fallback: fallbackProviderSchema.optional(),
-		url: httpUrlSchema.optional(),
-		graphhopper_url: httpUrlSchema.optional(),
-		osrm_url: httpUrlSchema.optional(),
-		overpass_url: httpUrlSchema.optional(),
-		batch_size: z.number().int().min(1).max(10).optional(),
-		cache: z.boolean().optional(),
-		cache_dir: z.string().optional(),
-	})
-	.refine(
-		(cfg) => {
-			const provider = cfg.provider;
-			const fallback = cfg.fallback;
-			if (provider && fallback && provider === fallback) {
-				return false;
-			}
-			return true;
-		},
-		{ message: '"routing.fallback" must differ from routing.provider' },
-	);
+export const routingConfigSchema = z.object({
+	provider: routingProviderSchema.optional(),
+	url: httpUrlSchema.optional(),
+	overpass_url: httpUrlSchema.optional(),
+	cache: z.boolean().optional(),
+	cache_dir: z.string().optional(),
+});
 
 // Reporting configuration schema
 export const reportingConfigSchema = z.object({

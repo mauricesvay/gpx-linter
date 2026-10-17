@@ -3,7 +3,6 @@ import type {
 	RuleContext,
 	RuleDefinition,
 	RuleResult,
-	Severity,
 	Trackpoint,
 } from "../types";
 import { numberParam, result, sameSegment } from "./utils";

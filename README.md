@@ -12,11 +12,10 @@
 ```sh
 npm install
 npm run build
-node dist/cli.js --help
-node dist/cli.js check route.gpx
+npx gpxlint --help
+npx gpxlint check route.gpx
 ```
-
-The built-in CLI is also exposed as `gpxlint` when the package is installed. To run the automated suite and compile TypeScript:
+To run the automated suite and compile TypeScript:
 
 ```sh
 npm run check
@@ -41,62 +40,12 @@ Unavailable or ambiguous inputs produce `unknown`, not a pass. Reports show sour
 
 ## Configuration
 
-Pass a YAML file using `--config`. Settings merge with the built-in defaults:
-
-```yaml
-rules:
-  max_slope:
-    enabled: true
-    severity: error
-    params:
-      max_percent: 10
-      min_segment_meters: 3
-      min_elevation_delta_meters: 1.5
-
-  contraflow_bike:
-    enabled: true
-    severity: error
-
-  roadworks:
-    enabled: true
-    severity: warning
-    params:
-      geojson_file: ./data/roadworks.geojson
-      buffer_meters: 5
-
-  sharp_turn:
-    enabled: true
-    severity: warning
-    params:
-      max_angle: 60
-      min_segment_meters: 5
-
-  off_road:
-    enabled: false
-    severity: error
-    params:
-      max_distance_meters: 50
-
-route_context:
-  loop_expected: false
-  ferry_allowed: false
-
-routing:
-  provider: osrm
-  fallback: graphhopper
-  osrm_url: https://router.project-osrm.org
-  graphhopper_url: http://localhost:8989
-  batch_size: 50
-  cache: true
-
-reporting:
-  format: text
-```
+Pass a YAML file using `--config`. Settings merge with the built-in defaults. See [`examples/gpxlint.yml`](examples/gpxlint.yml) for a full example.
 
 The roadworks source can also be supplied inline:
 
 ```sh
-gpxlint check route.gpx --geojson data/roadworks.geojson
+npx gpxlint check route.gpx --geojson data/roadworks.geojson
 ```
 
 Config-relative GeoJSON paths resolve relative to the YAML file. GeoJSON roadworks support `Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, and `MultiPolygon` features. `properties.name` is included in findings when available.
@@ -104,21 +53,21 @@ Config-relative GeoJSON paths resolve relative to the YAML file. GeoJSON roadwor
 ## CLI
 
 ```text
-gpxlint check route.gpx [--config gpxlint.yml]
+npx gpxlint check route.gpx [--config gpxlint.yml]
   [--rule max_slope --disable|--enable]
   [--geojson roadworks.geojson]
-  [--routing osrm|graphhopper|offline] [--url URL]
+  [--routing overpass|offline] [--url URL]
   [--format text|json|html] [--output report.json] [--no-cache]
 
-gpxlint rules list
-gpxlint cache clear
+npx gpxlint rules list
+npx gpxlint cache clear
 ```
 
 `--routing offline` currently means no live routing backend: road-dependent rules will be reported as unknown unless a future offline backend is configured. It does not silently substitute a nearest-road guess.
 
 ## Matching, data, and privacy
 
-Road matching uses OSRM map matching (with optional GraphHopper fallback) and retains confidence, snap distance, and unmatched/ambiguous states. Contraflow evaluation additionally requests road geometry and tags from Overpass and compares the route's direction with the OSM way direction. The public OSRM and Overpass endpoints are used by default; configure local service URLs for private or offline environments. Route coordinates are sent to whichever configured services are used.
+Road matching fetches OSM highway geometry from Overpass and snaps trackpoints to nearby ways locally, retaining confidence, snap distance, and unmatched/ambiguous states. Contraflow evaluation reuses the same Overpass data (way tags like `oneway`, `bus_lane`) and compares the route's direction with the OSM way direction. Public Overpass mirrors are used by default; configure `overpass_url` for a self-hosted instance. Route coordinates are sent to the Overpass endpoint you configure.
 
 Successful road matches are cached for 30 days and complete Overpass responses for 7 days under `~/.cache/gpxlint/`. Expired entries are ignored. Failed and partial responses are not cached as complete data. Cache hit and miss counts appear in the report.
 

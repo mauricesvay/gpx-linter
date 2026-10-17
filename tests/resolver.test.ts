@@ -15,13 +15,39 @@ afterEach(async () => {
 	);
 });
 
+function overpassResponse(
+	ways: {
+		id: number;
+		lat: number;
+		lonStart: number;
+		lonEnd: number;
+		tags?: Record<string, string>;
+	}[],
+) {
+	return JSON.stringify({
+		elements: ways.map((way) => ({
+			type: "way",
+			id: way.id,
+			tags: { highway: "residential", ...way.tags },
+			geometry: [
+				{ lat: way.lat, lon: way.lonStart },
+				{ lat: way.lat, lon: way.lonEnd },
+			],
+		})),
+	});
+}
+
+const overpassFetcher = (body: string) =>
+	vi.fn().mockResolvedValue(new Response(body, { status: 200 }));
+
+// Two trackpoints close together so the route bbox produces a single chunk.
+const points = [point(48, 2.008), point(48, 2.012)];
+
 describe("road matching", () => {
 	it("returns unavailable rather than an empty success for malformed provider responses", async () => {
-		const fetcher = vi
-			.fn()
-			.mockResolvedValue(new Response("{bad json", { status: 200 }));
-		const result = await resolveRoads([point(48, 2), point(49, 3)], {
-			provider: "osrm",
+		const fetcher = overpassFetcher("{bad json");
+		const result = await resolveRoads(points, {
+			provider: "overpass",
 			url: "https://routing.invalid",
 			cache: false,
 			fetcher,
@@ -33,50 +59,15 @@ describe("road matching", () => {
 		expect(result.cache).toEqual({ hits: 0, misses: 0 });
 	});
 
-	it("keeps ambiguous matches unknown for safety rules", async () => {
-		const fetcher = vi.fn().mockResolvedValue(
-			new Response(
-				JSON.stringify({
-					code: "Ok",
-					tracepoints: [
-						{
-							location: [2, 48],
-							matchings_index: 0,
-							waypoint_index: 0,
-							distance: 3,
-						},
-						{
-							location: [3, 49],
-							matchings_index: 0,
-							waypoint_index: 1,
-							distance: 2,
-						},
-					],
-					matchings: [
-						{
-							confidence: 0.4,
-							legs: [
-								{
-									annotation: { nodes: [100, 101], distance: 10, duration: 1 },
-								},
-							],
-							geometry: {
-								coordinates: [
-									[2, 48],
-									[2.001, 48],
-								],
-							},
-							weight: 1,
-							distance: 10,
-							duration: 1,
-						},
-					],
-				}),
-				{ status: 200 },
-			),
+	it("reports matches as ambiguous when nearby roads are too close to distinguish", async () => {
+		const fetcher = overpassFetcher(
+			overpassResponse([
+				{ id: 1, lat: 48, lonStart: 2.004, lonEnd: 2.02 },
+				{ id: 2, lat: 48.000015, lonStart: 2.004, lonEnd: 2.02 },
+			]),
 		);
-		const result = await resolveRoads([point(48, 2), point(49, 3)], {
-			provider: "osrm",
+		const result = await resolveRoads(points, {
+			provider: "overpass",
 			url: "https://routing.invalid",
 			cache: false,
 			fetcher,
@@ -91,38 +82,18 @@ describe("road matching", () => {
 			path.join(os.tmpdir(), "gpxlint-road-cache-"),
 		);
 		directories.push(cacheDir);
-		const fetcher = vi.fn().mockResolvedValue(
-			new Response(
-				JSON.stringify({
-					code: "Ok",
-					tracepoints: [
-						{
-							location: [2, 48],
-							matchings_index: 0,
-							waypoint_index: 0,
-							distance: 2,
-						},
-						{
-							location: [3, 49],
-							matchings_index: 0,
-							waypoint_index: 1,
-							distance: 3,
-						},
-					],
-					matchings: [{ confidence: 0.95 }],
-				}),
-				{ status: 200 },
-			),
+		const fetcher = overpassFetcher(
+			overpassResponse([{ id: 1, lat: 48, lonStart: 2.004, lonEnd: 2.02 }]),
 		);
 		const options = {
-			provider: "osrm" as const,
+			provider: "overpass" as const,
 			url: "https://routing.invalid",
 			cacheDir,
 			fetcher,
 		};
 
-		const first = await resolveRoads([point(48, 2), point(49, 3)], options);
-		const second = await resolveRoads([point(48, 2), point(49, 3)], options);
+		const first = await resolveRoads(points, options);
+		const second = await resolveRoads(points, options);
 
 		expect(first.cache.misses).toBe(2);
 		expect(second.cache.hits).toBe(2);
@@ -135,31 +106,14 @@ describe("road matching", () => {
 			.mockResolvedValueOnce(
 				new Response("", { status: 503, headers: { "retry-after": "0" } }),
 			)
-			.mockResolvedValueOnce(
+			.mockResolvedValue(
 				new Response(
-					JSON.stringify({
-						code: "Ok",
-						tracepoints: [
-							{
-								location: [2, 48],
-								matchings_index: 0,
-								waypoint_index: 0,
-								distance: 1,
-							},
-							{
-								location: [3, 49],
-								matchings_index: 0,
-								waypoint_index: 1,
-								distance: 2,
-							},
-						],
-						matchings: [{ confidence: 0.9 }],
-					}),
+					overpassResponse([{ id: 1, lat: 48, lonStart: 2.004, lonEnd: 2.02 }]),
 					{ status: 200 },
 				),
 			);
-		const result = await resolveRoads([point(48, 2), point(49, 3)], {
-			provider: "osrm",
+		const result = await resolveRoads(points, {
+			provider: "overpass",
 			url: "https://routing.invalid",
 			cache: false,
 			fetcher,
@@ -169,114 +123,93 @@ describe("road matching", () => {
 		expect(result.matches[0].status).toBe("matched");
 	});
 
-	it("uses the configured GraphHopper fallback when OSRM returns malformed data", async () => {
-		const fetcher = vi.fn((input: string | URL | Request) => {
-			if (String(input).includes("/match")) {
-				return Promise.resolve(
-					new Response(
-						JSON.stringify({
-							map_matching: {
-								tracepoints: [
-									{ matching_index: 0, distance: 2 },
-									{ matching_index: 0, distance: 3 },
-								],
-								matchings: [{ confidence: 0.9 }],
-							},
-						}),
-						{ status: 200 },
-					),
-				);
-			}
-			return Promise.resolve(new Response("{broken", { status: 200 }));
-		});
-		const result = await resolveRoads([point(48, 2), point(49, 3)], {
-			provider: "osrm",
-			fallback: "graphhopper",
-			osrmUrl: "https://osrm.invalid",
-			graphhopperUrl: "https://graphhopper.invalid",
+	it("reports offline as unavailable without contacting any provider", async () => {
+		const fetcher = vi.fn();
+		const result = await resolveRoads(points, {
+			provider: "offline",
 			cache: false,
 			fetcher,
 		});
 
-		expect(result.matches[0].status).toBe("matched");
-		expect(result.matches[0].provider).toBe("graphhopper");
-		expect(fetcher).toHaveBeenCalledTimes(2);
+		expect(fetcher).not.toHaveBeenCalled();
+		expect(result.availability.status).toBe("unavailable");
+		expect(result.matches[0].status).toBe("unmatched");
+		expect(result.matches[0].provider).toBe("offline");
+		expect(result.providerErrors[0]).toMatch(/offline/i);
 	});
 
-	it("does not send separate GPX segments as one continuous matching trace", async () => {
-		const first = point(48, 2, null, 0);
-		const second = point(48.1, 2.1, null, 0);
-		const third = { ...point(48, 2, null, 1), segmentId: 1 };
-		const fourth = { ...point(48.1, 2.1, null, 1), segmentId: 1 };
-		const fetcher = vi.fn().mockImplementation(() =>
-			Promise.resolve(
-				new Response(
-					JSON.stringify({
-						code: "Ok",
-						tracepoints: [
-							{
-								location: [2, 48],
-								matchings_index: 0,
-								waypoint_index: 0,
-								distance: 1,
-							},
-							{
-								location: [2.1, 48.1],
-								matchings_index: 0,
-								waypoint_index: 1,
-								distance: 1,
-							},
-						],
-						matchings: [{ confidence: 0.9 }],
-					}),
-					{ status: 200 },
-				),
-			),
-		);
-		const result = await resolveRoads([first, second, third, fourth], {
-			provider: "osrm",
-			url: "https://routing.invalid",
-			cache: false,
-			fetcher,
-		});
-
-		expect(fetcher).toHaveBeenCalledTimes(2);
-		expect(result.matches).toHaveLength(4);
-		expect(result.availability.status).toBe("complete");
-	});
-
-	it("rejects a provider response snapped nowhere near the requested coordinate", async () => {
+	it("matches points across multiple GPX segments in one query", async () => {
+		const first = point(48, 2.005);
+		const second = point(48.0002, 2.006);
+		const third = { ...point(48.0004, 2.007, null, 0), segmentId: 1 };
+		const fourth = { ...point(48.0006, 2.008, null, 0), segmentId: 1 };
 		const fetcher = vi.fn().mockResolvedValue(
 			new Response(
 				JSON.stringify({
-					code: "Ok",
-					tracepoints: [
+					elements: [
 						{
-							location: [3, 49],
-							matchings_index: 0,
-							waypoint_index: 0,
-							distance: 1,
-						},
-						{
-							location: [4, 50],
-							matchings_index: 0,
-							waypoint_index: 1,
-							distance: 2,
+							type: "way",
+							id: 1,
+							tags: { highway: "residential" },
+							geometry: [
+								{ lat: 48, lon: 2.005 },
+								{ lat: 48.0006, lon: 2.008 },
+							],
 						},
 					],
-					matchings: [{ confidence: 0.9 }],
 				}),
 				{ status: 200 },
 			),
 		);
-		const result = await resolveRoads([point(48, 2), point(49, 3)], {
-			provider: "osrm",
+		const result = await resolveRoads([first, second, third, fourth], {
+			provider: "overpass",
+			url: "https://routing.invalid",
+			cache: false,
+			fetcher,
+		});
+
+		expect(fetcher).toHaveBeenCalledTimes(1);
+		expect(result.matches).toHaveLength(4);
+		expect(result.availability.status).toBe("complete");
+	});
+
+	it("includes the provider response body in HTTP error details", async () => {
+		const fetcher = vi.fn().mockImplementation(() =>
+			Promise.resolve(
+				new Response(
+					JSON.stringify({
+						message: "Internal server error during matching.",
+					}),
+					{ status: 500, statusText: "Internal Server Error" },
+				),
+			),
+		);
+		const result = await resolveRoads(points, {
+			provider: "overpass",
+			url: "https://routing.invalid",
+			cache: false,
+			fetcher,
+		});
+
+		expect(result.providerErrors[0]).toContain("HTTP 500");
+		expect(result.providerErrors[0]).toContain("routing.invalid");
+		expect(result.providerErrors[0]).toContain(
+			"Internal server error during matching.",
+		);
+	});
+
+	it("leaves points unmatched when the returned road geometry is far away", async () => {
+		const fetcher = overpassFetcher(
+			overpassResponse([{ id: 1, lat: 50, lonStart: 3, lonEnd: 3.01 }]),
+		);
+		const result = await resolveRoads(points, {
+			provider: "overpass",
 			url: "https://routing.invalid",
 			cache: false,
 			fetcher,
 		});
 
 		expect(result.availability.status).toBe("unavailable");
-		expect(result.providerErrors[0]).toMatch(/did not correspond/i);
+		expect(result.matches[0].status).toBe("unmatched");
 	});
 });

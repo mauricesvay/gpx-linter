@@ -53,32 +53,34 @@ describe("configuration", () => {
 		await expect(loadConfig(configFile)).rejects.toThrow(/enum|severity/i);
 	});
 
-	it("selects the alternate provider when only a primary provider is configured", async () => {
+	it("merges overpass routing settings from the config file", async () => {
 		const directory = await mkdtemp(path.join(os.tmpdir(), "gpxlint-config-"));
 		directories.push(directory);
 		const configFile = path.join(directory, "gpxlint.yml");
 		await writeFile(
 			configFile,
 			`routing:
-  provider: graphhopper
-  graphhopper_url: http://localhost:8989
+  provider: overpass
+  overpass_url: https://overpass.local/api/interpreter
 `,
 		);
 		const config = await loadConfig(configFile);
-		expect(config.routing?.provider).toBe("graphhopper");
-		expect(config.routing?.fallback).toBe("osrm");
+		expect(config.routing?.provider).toBe("overpass");
+		expect(config.routing?.overpass_url).toBe(
+			"https://overpass.local/api/interpreter",
+		);
 	});
 
-	it("rejects malformed numeric rule parameters instead of using a default", async () => {
+	it("rejects an unknown routing provider instead of using a default", async () => {
 		const directory = await mkdtemp(path.join(os.tmpdir(), "gpxlint-config-"));
 		directories.push(directory);
 		const configFile = path.join(directory, "gpxlint.yml");
 		await writeFile(
 			configFile,
 			`routing:
-  batch_size: 99
+  provider: bogus
 `,
 		);
-		await expect(loadConfig(configFile)).rejects.toThrow(/Number must be/i);
+		await expect(loadConfig(configFile)).rejects.toThrow(/overpass/);
 	});
 });
