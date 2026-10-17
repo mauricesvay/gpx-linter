@@ -57,7 +57,7 @@ routing:
   fallback: graphhopper
   osrm_url: https://router.project-osrm.org
   graphhopper_url: http://localhost:8989
-  batch_size: 50
+  batch_size: 10
   cache: true
 
 reporting:
