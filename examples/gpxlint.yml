@@ -1,0 +1,65 @@
+rules:
+  max_slope:
+    enabled: true
+    severity: error
+    params:
+      max_percent: 10
+      min_segment_meters: 3
+      min_elevation_delta_meters: 1.5
+
+  contraflow_bike:
+    enabled: true
+    severity: error
+
+  roadworks:
+    enabled: false
+    severity: warning
+    params:
+      buffer_meters: 5
+
+  sharp_turn:
+    enabled: true
+    severity: warning
+    params:
+      max_angle: 60
+      min_segment_meters: 5
+
+  off_road:
+    enabled: false
+    severity: error
+    params:
+      max_distance_meters: 50
+
+  missing_elevation:
+    enabled: true
+    severity: info
+    params:
+      max_missing_percent: 20
+
+  route_gaps:
+    enabled: true
+    severity: info
+    params:
+      max_gap_meters: 500
+
+  loop_closure:
+    enabled: true
+    severity: info
+    params:
+      max_return_distance_meters: 100
+
+route_context:
+  loop_expected: false
+  ferry_allowed: false
+
+routing:
+  provider: osrm
+  fallback: graphhopper
+  osrm_url: https://router.project-osrm.org
+  graphhopper_url: http://localhost:8989
+  batch_size: 50
+  cache: true
+
+reporting:
+  format: text
+  color: auto
