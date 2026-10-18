@@ -19,15 +19,13 @@ describe("check command", () => {
 	it("writes a JSON report and returns the validation exit code", async () => {
 		vi.stubGlobal(
 			"fetch",
-			vi
-				.fn()
-				.mockImplementation(() =>
-					Promise.resolve(
-						new Response(JSON.stringify({ elements: [] }), {
-							headers: { "content-type": "application/json" },
-						}),
-					),
+			vi.fn().mockImplementation(() =>
+				Promise.resolve(
+					new Response(JSON.stringify({ elements: [] }), {
+						headers: { "content-type": "application/json" },
+					}),
 				),
+			),
 		);
 		const directory = await mkdtemp(path.join(os.tmpdir(), "gpxlint-cli-"));
 		directories.push(directory);

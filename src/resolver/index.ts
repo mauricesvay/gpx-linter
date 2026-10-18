@@ -11,10 +11,12 @@ import { message } from "../utils";
 import {
 	CACHE_VERSION,
 	cacheKey,
+	compactCache,
 	DEFAULT_CACHE_DIR,
 	isUsableCacheEntry,
 	ROAD_CACHE_TTL_MS,
 	readCache,
+	type CacheEntry,
 } from "./cache";
 import { resolveWithOverpass } from "./overpass";
 
@@ -52,10 +54,7 @@ export async function resolveRoads(
 		options.cacheDir ?? DEFAULT_CACHE_DIR,
 		"cache.json",
 	);
-	let cache: Record<
-		string,
-		{ version: string; storedAt: number; result: MatchResult }
-	> = {};
+	let cache: Record<string, CacheEntry> = {};
 	let cacheError: string | undefined;
 	if (cacheEnabled) {
 		try {
@@ -210,14 +209,12 @@ function getOsmWaysAvailability(
 
 async function writeCache(
 	cachePath: string,
-	cache: Record<
-		string,
-		{ version: string; storedAt: number; result: MatchResult }
-	>,
+	cache: Record<string, CacheEntry>,
 ): Promise<string | undefined> {
 	try {
+		const compacted = compactCache(cache);
 		await mkdir(path.dirname(cachePath), { recursive: true });
-		await writeFile(cachePath, JSON.stringify(cache), "utf8");
+		await writeFile(cachePath, JSON.stringify(compacted), "utf8");
 	} catch (error) {
 		return `Unable to write road cache: ${message(error)}`;
 	}

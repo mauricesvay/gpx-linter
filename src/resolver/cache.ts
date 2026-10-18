@@ -17,10 +17,17 @@ interface CacheEntry {
 	result: MatchResult;
 }
 
-export { ROAD_CACHE_TTL_MS, CACHE_FILE_NAME };
+export { ROAD_CACHE_TTL_MS, CACHE_FILE_NAME, type CacheEntry };
+
+const QUANTIZE_DP = 5; // ~1 meter precision
+
+/** Quantize lat/lon to 5 decimal places (~1 m) so re-rides of same route hit cache. */
+function quantizePoint(point: Trackpoint): string {
+	return `${point.lat.toFixed(QUANTIZE_DP)},${point.lon.toFixed(QUANTIZE_DP)}`;
+}
 
 export function cacheKey(point: Trackpoint): string {
-	return createHash("sha256").update(`${point.lat},${point.lon}`).digest("hex");
+	return createHash("sha256").update(quantizePoint(point)).digest("hex");
 }
 
 export function isUsableCacheEntry(result: unknown): result is MatchResult {
@@ -31,6 +38,11 @@ export function isUsableCacheEntry(result: unknown): result is MatchResult {
 		(entry.confidence === "high" || entry.confidence === "medium") &&
 		typeof entry.score === "number"
 	);
+}
+
+/** Check if a cache entry has expired past its TTL. */
+export function isExpired(entry: CacheEntry, ttlMs: number): boolean {
+	return Date.now() - entry.storedAt >= ttlMs;
 }
 
 export function makeCacheEntry(
@@ -65,6 +77,50 @@ function normalizeCacheEntry(key: string, value: unknown): CacheEntry | null {
 		storedAt: v.storedAt,
 		result: v.result as MatchResult,
 	};
+}
+
+/** Maximum number of entries to keep in the road cache. */
+const MAX_CACHE_ENTRIES = 100_000;
+
+/** Evict expired entries and cap by count (LRU by storedAt). Returns cleaned cache. */
+export function compactCache(
+	cache: Record<string, CacheEntry>,
+): Record<string, CacheEntry> {
+	const now = Date.now();
+	const compacted: Record<string, CacheEntry> = {};
+	let expired = 0;
+
+	// Remove expired entries.
+	for (const [key, entry] of Object.entries(cache)) {
+		if (isExpired(entry, ROAD_CACHE_TTL_MS)) {
+			expired++;
+		} else {
+			compacted[key] = entry;
+		}
+	}
+
+	// Cap by count: evict oldest entries (by storedAt) until within limit.
+	if (Object.keys(compacted).length > MAX_CACHE_ENTRIES) {
+		const sorted = Object.entries(compacted).sort(
+			(a, b) => a[1].storedAt - b[1].storedAt,
+		);
+		const toKeep = sorted.slice(0, MAX_CACHE_ENTRIES);
+		for (const [key, entry] of toKeep) {
+			compacted[key] = entry;
+		}
+		const evicted = sorted.length - toKeep.length;
+		if (evicted > 0) {
+			console.warn(
+				`Road cache capped: evicted ${evicted} oldest entries (max ${MAX_CACHE_ENTRIES}).`,
+			);
+		}
+	}
+
+	if (expired > 0) {
+		console.warn(`Road cache compacted: removed ${expired} expired entries.`);
+	}
+
+	return compacted;
 }
 
 export async function readCache(
