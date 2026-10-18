@@ -2,7 +2,7 @@
 title: "P1-04: max_slope returns pass with no elevation"
 priority: P1
 category: "contract"
-status: open
+status: done
 created: 2026-10-17
 files:
   - src/rules/max_slope.ts

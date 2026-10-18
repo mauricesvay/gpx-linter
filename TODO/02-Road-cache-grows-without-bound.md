@@ -2,7 +2,7 @@
 title: "P0-02: Road cache grows without bound"
 priority: P0
 category: "data-integrity"
-status: open
+status: done
 created: 2026-10-17
 files:
   - src/resolver/cache.ts

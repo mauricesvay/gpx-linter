@@ -82,18 +82,34 @@ export function maxSlope(
 			);
 		}
 	}
-	if (results.length === 0)
-		results.push(
-			result(
-				"max_slope",
-				definition,
-				"error",
-				"pass",
-				`No within-segment slopes exceed the ${threshold}% limit.`,
-				"high",
-				undefined,
-				{ checkedSegments: checked, thresholdPercentage: threshold },
-			),
-		);
+	if (results.length === 0) {
+		if (checked === 0) {
+			results.push(
+				result(
+					"max_slope",
+					definition,
+					"error",
+					"unknown",
+					"No segments could be evaluated (no elevation data or all within-segment points skipped).",
+					"high",
+					undefined,
+					{ checkedSegments: 0, thresholdPercentage: threshold },
+				),
+			);
+		} else {
+			results.push(
+				result(
+					"max_slope",
+					definition,
+					"error",
+					"pass",
+					`No within-segment slopes exceed the ${threshold}% limit.`,
+					"high",
+					undefined,
+					{ checkedSegments: checked, thresholdPercentage: threshold },
+				),
+			);
+		}
+	}
 	return results;
 }
