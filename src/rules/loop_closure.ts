@@ -1,5 +1,4 @@
 import { z } from "zod";
-
 import { distanceMeters } from "../geo";
 import type {
 	RuleContext,
@@ -7,6 +6,7 @@ import type {
 	RuleResult,
 	Trackpoint,
 } from "../types";
+import { RULE_DEFAULTS } from "./constants";
 import { numberParam, result } from "./utils";
 
 /** Zod schema for loop_closure rule parameters. */
@@ -66,7 +66,12 @@ export function loopClosure(
 	const start = points[0];
 	const end = points[points.length - 1];
 	const distance = distanceMeters(start, end);
-	const threshold = numberParam(definition, "max_return_distance_meters", 100);
+	const threshold = numberParam(
+		definition,
+		"max_return_distance_meters",
+		(RULE_DEFAULTS.loop_closure as Record<string, unknown>)
+			.max_return_distance_meters as number,
+	);
 	const failed = distance > threshold;
 	return [
 		result(

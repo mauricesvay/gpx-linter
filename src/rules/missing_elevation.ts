@@ -1,6 +1,6 @@
 import { z } from "zod";
-
 import type { RuleDefinition, RuleResult, Trackpoint } from "../types";
+import { RULE_DEFAULTS } from "./constants";
 import { numberParam, result } from "./utils";
 
 /** Zod schema for missing_elevation rule parameters. */
@@ -38,7 +38,8 @@ export function missingElevation(
 	const threshold = numberParam(
 		definition,
 		"max_missing_elevation_percentage",
-		50,
+		(RULE_DEFAULTS.missing_elevation as Record<string, unknown>)
+			.max_missing_elevation_percentage as number,
 	);
 	const total = points.length;
 	if (total === 0)

@@ -1,7 +1,7 @@
 import { z } from "zod";
-
 import { bearingDegrees, distanceMeters } from "../geo";
 import type { RuleDefinition, RuleResult, Trackpoint } from "../types";
+import { RULE_DEFAULTS } from "./constants";
 import { numberParam, result, sameSegment } from "./utils";
 
 /** Zod schema for sharp_turns rule parameters. */
@@ -38,12 +38,22 @@ export function sharpTurns(
 	definition: RuleDefinition,
 	points: Trackpoint[],
 ): RuleResult[] {
-	const limit = numberParam(definition, "max_angle", 60);
-	const minLength = numberParam(definition, "min_segment_meters", 5);
+	const limit = numberParam(
+		definition,
+		"max_angle",
+		(RULE_DEFAULTS.sharp_turn as Record<string, unknown>).max_angle as number,
+	);
+	const minLength = numberParam(
+		definition,
+		"min_segment_meters",
+		(RULE_DEFAULTS.sharp_turn as Record<string, unknown>)
+			.min_segment_meters as number,
+	);
 	const minimumChange = numberParam(
 		definition,
 		"min_heading_change_degrees",
-		0,
+		(RULE_DEFAULTS.sharp_turn as Record<string, unknown>)
+			.min_heading_change_degrees as number,
 	);
 	const results: RuleResult[] = [];
 	let considered = 0;

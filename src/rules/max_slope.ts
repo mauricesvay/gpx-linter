@@ -1,7 +1,7 @@
 import { z } from "zod";
-
 import { distanceMeters } from "../geo";
 import type { RuleDefinition, RuleResult, Trackpoint } from "../types";
+import { RULE_DEFAULTS } from "./constants";
 import { numberParam, result, sameSegment, smoothElevations } from "./utils";
 
 /** Zod schema for max_slope rule parameters. */
@@ -19,7 +19,7 @@ export type MaxSlopeParamsInput = z.infer<typeof maxSlopeParamsSchema>;
  *
  * For every consecutive pair of trackpoints within the same segment, the rule computes
  * the absolute slope as |Δ elevation| / horizontal distance × 100. When this exceeds the
- * configured threshold (default 25%), the point is flagged as a failure.
+ * configured threshold (default 10%), the point is flagged as a failure.
  *
  * Parameters
  *   max_slope_percentage  — maximum allowed slope in percent (default: 10)
@@ -48,7 +48,12 @@ export function maxSlope(
 				"low",
 			),
 		];
-	const threshold = numberParam(definition, "max_slope_percentage", 10);
+	const threshold = numberParam(
+		definition,
+		"max_slope_percentage",
+		(RULE_DEFAULTS.max_slope as Record<string, unknown>)
+			.max_slope_percentage as number,
+	);
 	const elevations = smoothElevations(points);
 	const results: RuleResult[] = [];
 	let checked = 0;

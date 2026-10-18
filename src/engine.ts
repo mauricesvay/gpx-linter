@@ -10,6 +10,7 @@ import {
 	routeGaps,
 	sharpTurns,
 } from "./rules";
+import { RULE_DEFAULTS } from "./rules/constants";
 import type {
 	RuleContext,
 	RuleDefinition,
@@ -98,11 +99,7 @@ registerRule(
 		requiresRoads: false,
 		enabledByDefault: true,
 		description: "Checks for excessive road gradient/slope.",
-		params: {
-			max_slope_percentage: 10,
-			min_segment_meters: 3,
-			min_elevation_delta_meters: 1.5,
-		},
+		params: RULE_DEFAULTS.max_slope,
 	},
 	(def, pts) => maxSlope(def, pts),
 );
@@ -125,7 +122,7 @@ registerRule(
 		requiresRoads: false,
 		enabledByDefault: false,
 		description: "Checks for proximity to roadworks/construction zones.",
-		params: { buffer_meters: 1, geojson_file: "" },
+		params: RULE_DEFAULTS.roadworks,
 	},
 	(def, pts) => roadworks(def, pts),
 );
@@ -137,11 +134,7 @@ registerRule(
 		requiresRoads: false,
 		enabledByDefault: false,
 		description: "Checks for sharp turns that may indicate navigation errors.",
-		params: {
-			max_angle: 60,
-			min_segment_meters: 5,
-			min_heading_change_degrees: 0,
-		},
+		params: RULE_DEFAULTS.sharp_turn,
 	},
 	(def, pts) => sharpTurns(def, pts),
 );
@@ -153,7 +146,7 @@ registerRule(
 		requiresRoads: true,
 		enabledByDefault: false,
 		description: "Checks for sections of the route that are off-road.",
-		params: { max_distance_meters: 50 },
+		params: RULE_DEFAULTS.off_road,
 	},
 	(def, pts, ctx) => evaluateOffRoad(def, pts, ctx ?? {}),
 );
@@ -165,7 +158,7 @@ registerRule(
 		requiresRoads: false,
 		enabledByDefault: true,
 		description: "Reports trackpoints missing elevation data.",
-		params: { max_missing_elevation_percentage: 50 },
+		params: RULE_DEFAULTS.missing_elevation,
 	},
 	(def, pts) => missingElevation(def, pts),
 );
@@ -177,7 +170,7 @@ registerRule(
 		requiresRoads: false,
 		enabledByDefault: false,
 		description: "Detects large gaps between consecutive trackpoints.",
-		params: { max_gap_meters: 500 },
+		params: RULE_DEFAULTS.route_gaps,
 	},
 	(def, pts, ctx) => routeGaps(def, pts, ctx ?? {}),
 );
@@ -189,7 +182,7 @@ registerRule(
 		requiresRoads: false,
 		enabledByDefault: false,
 		description: "Checks whether the route returns near its starting point.",
-		params: { max_return_distance_meters: 100 },
+		params: RULE_DEFAULTS.loop_closure,
 	},
 	(def, pts, ctx) => loopClosure(def, pts, ctx ?? {}),
 );
@@ -202,7 +195,7 @@ registerRule(
 		enabledByDefault: false,
 		description:
 			"Checks for dedicated cycling facilities without a nearby same-direction car road.",
-		params: { max_distance_meters: 30 },
+		params: RULE_DEFAULTS.bike_lane_no_same_direction_car_lane,
 	},
 	(def, pts, ctx) =>
 		evaluateBikeLaneNoSameDirectionCarLane(def, pts, ctx ?? {}),

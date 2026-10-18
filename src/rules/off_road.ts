@@ -6,6 +6,7 @@ import type {
 	RuleResult,
 	Trackpoint,
 } from "../types";
+import { RULE_DEFAULTS } from "./constants";
 import {
 	buildSummaryResult,
 	isConfidentMatch,
@@ -116,7 +117,12 @@ function evaluateOffRoadPoints(
 			continue;
 		}
 		evaluated++;
-		const threshold = numberParam(definition, "max_distance_meters", 50);
+		const threshold = numberParam(
+			definition,
+			"max_distance_meters",
+			(RULE_DEFAULTS.off_road as Record<string, unknown>)
+				.max_distance_meters as number,
+		);
 		if (match.distanceToRoad > threshold) {
 			failures.push(
 				result(

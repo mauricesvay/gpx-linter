@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
-
 import { isWithinFeature } from "../geo";
 import type {
 	GeoJsonFeatureCollection,
@@ -10,6 +9,7 @@ import type {
 	Trackpoint,
 } from "../types";
 import { errorMessage } from "../utils";
+import { RULE_DEFAULTS } from "./constants";
 import { isFeatureCollection, numberParam, result } from "./utils";
 
 /** Zod schema for roadworks rule parameters. */
@@ -49,7 +49,7 @@ function geoJsonToLeafletCoords(geometry: GeoJsonGeometry | null): {
  *
  * Parameters
  *   buffer_meters — radius (in metres) around each GeoJSON feature to check
- *                   (default: 5)
+ *                   (default: 1)
  *   geojson_file  — path to the GeoJSON file (relative to config file path)
  *
  * Each feature's `name` property is used in the output message; unnamed
@@ -100,7 +100,12 @@ export async function roadworks(
 				"Provide a valid GeoJSON FeatureCollection via `geojson_file` in config or `data` in rule definition.",
 		);
 	}
-	const buffer = numberParam(definition, "buffer_meters", 1);
+	const buffer = numberParam(
+		definition,
+		"buffer_meters",
+		(RULE_DEFAULTS.roadworks as Record<string, unknown>)
+			.buffer_meters as number,
+	);
 	const results: RuleResult[] = [];
 	for (const point of points) {
 		for (const feature of geoJson.features) {

@@ -8,6 +8,7 @@ import {
 	type routeContextSchema,
 	type routingConfigSchema,
 } from "./configSchema";
+import { RULE_DEFAULTS } from "./rules/constants";
 import type { LinterConfig, RuleDefinition, Severity } from "./types";
 import { errorMessage, isRecord } from "./utils";
 
@@ -36,51 +37,50 @@ const _DEFAULT_CONFIG: LinterConfig = {
 		max_slope: {
 			enabled: true,
 			severity: "error",
-			params: {
-				max_slope_percentage: 10,
-				min_segment_meters: 3,
-				min_elevation_delta_meters: 1.5,
-			},
+			params: { ...(RULE_DEFAULTS.max_slope as Record<string, unknown>) },
 		},
 		contraflow_bike: { enabled: true, severity: "error" },
 		roadworks: {
 			enabled: false,
 			severity: "warning",
-			params: { buffer_meters: 1, geojson_file: "" },
+			params: { ...(RULE_DEFAULTS.roadworks as Record<string, unknown>) },
 		},
 		sharp_turn: {
 			enabled: false,
 			severity: "warning",
-			params: {
-				max_angle: 60,
-				min_segment_meters: 5,
-				min_heading_change_degrees: 0,
-			},
+			params: { ...(RULE_DEFAULTS.sharp_turn as Record<string, unknown>) },
 		},
 		off_road: {
 			enabled: false,
 			severity: "error",
-			params: { max_distance_meters: 50 },
+			params: { ...(RULE_DEFAULTS.off_road as Record<string, unknown>) },
 		},
 		missing_elevation: {
 			enabled: true,
 			severity: "info",
-			params: { max_missing_elevation_percentage: 50 },
+			params: {
+				...(RULE_DEFAULTS.missing_elevation as Record<string, unknown>),
+			},
 		},
 		route_gaps: {
 			enabled: false,
 			severity: "info",
-			params: { max_gap_meters: 500 },
+			params: { ...(RULE_DEFAULTS.route_gaps as Record<string, unknown>) },
 		},
 		loop_closure: {
 			enabled: false,
 			severity: "info",
-			params: { max_return_distance_meters: 100 },
+			params: { ...(RULE_DEFAULTS.loop_closure as Record<string, unknown>) },
 		},
 		bike_lane_no_same_direction_car_lane: {
 			enabled: true,
 			severity: "warning",
-			params: { max_distance_meters: 30 },
+			params: {
+				...(RULE_DEFAULTS.bike_lane_no_same_direction_car_lane as Record<
+					string,
+					unknown
+				>),
+			},
 		},
 	},
 	routing: {

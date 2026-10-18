@@ -148,12 +148,7 @@ export async function runLinter(options: LintOptions): Promise<LintResult> {
 	}
 
 	// Load and apply config overrides
-	let config =
-		userConfig ??
-		(await loadConfig(
-			// config file path would come from options in a real CLI
-			"",
-		));
+	let config = userConfig ?? (await loadConfig(""));
 	if (rule && (enable || disable)) {
 		config = applyRuleOverride(config, rule, enable === true);
 	}

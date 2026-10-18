@@ -1,5 +1,4 @@
 import { z } from "zod";
-
 import { distanceMeters } from "../geo";
 import type {
 	RuleContext,
@@ -7,6 +6,7 @@ import type {
 	RuleResult,
 	Trackpoint,
 } from "../types";
+import { RULE_DEFAULTS } from "./constants";
 import { numberParam, result, sameSegment } from "./utils";
 
 /** Zod schema for route_gaps rule parameters. */
@@ -53,7 +53,12 @@ export function routeGaps(
 			),
 		];
 	}
-	const threshold = numberParam(definition, "max_gap_meters", 500);
+	const threshold = numberParam(
+		definition,
+		"max_gap_meters",
+		(RULE_DEFAULTS.route_gaps as Record<string, unknown>)
+			.max_gap_meters as number,
+	);
 	const results: RuleResult[] = [];
 	let checked = 0;
 	for (let i = 1; i < points.length; i++) {
