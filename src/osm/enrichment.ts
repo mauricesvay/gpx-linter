@@ -1,16 +1,15 @@
-import { fetchOverpassBboxWays } from "./fetch";
-import { snapSinglePoint, buildWayIndex, type IndexedWay } from "./snapping";
 import type { DataSourceAvailability, MatchResult, Trackpoint } from "../types";
 import {
 	MAX_SNAP_DISTANCE_METERS,
-	OVERPASS_TTL_MS,
-	OVERPASS_PRIMARY,
 	type OsmDataOptions,
 	type OsmEnrichmentResult,
 	type OsmWay,
+	OVERPASS_PRIMARY,
+	OVERPASS_TTL_MS,
 	routeBbox,
 } from "./cache";
-import { DEFAULT_MAX_TRACK_POINTS } from "../constants";
+import { fetchOverpassBboxWays } from "./fetch";
+import { buildWayIndex, snapSinglePoint } from "./snapping";
 
 /* ── enrichment: re-snap matched points for OSM data ────────────────── */
 
@@ -18,7 +17,7 @@ function enrichMatches(
 	points: Trackpoint[],
 	matches: MatchResult[],
 	ways: OsmWay[],
-	suppliedBy: string,
+	_suppliedBy: string,
 ): MatchResult[] {
 	const { cells, indexed } = buildWayIndex(ways);
 	const results: MatchResult[] = [];
@@ -35,8 +34,7 @@ function enrichMatches(
 		}
 		const point = points[index];
 		const prevResult = results.length > 0 ? results[results.length - 1] : null;
-		const prevRoadId =
-			prevResult && prevResult.roadId ? String(prevResult.roadId) : null;
+		const prevRoadId = prevResult?.roadId ? String(prevResult.roadId) : null;
 
 		const snap = snapSinglePoint(
 			point,
@@ -77,10 +75,10 @@ function enrichMatches(
 		const { topCandidate } = snap;
 		results.push({
 			...match,
-			roadId: String(topCandidate!.way.id),
-			roadName: topCandidate!.way.tags.name,
-			osmDistanceToRoad: topCandidate!.distance,
-			tags: topCandidate!.way.tags,
+			roadId: String(topCandidate?.way.id),
+			roadName: topCandidate?.way.tags.name,
+			osmDistanceToRoad: topCandidate?.distance,
+			tags: topCandidate?.way.tags,
 			direction: snap.direction,
 			provider: match.provider,
 		});
@@ -96,7 +94,7 @@ export async function enrichWithOsm(
 	options: OsmDataOptions = {},
 ): Promise<OsmEnrichmentResult> {
 	const cache = { hits: 0, misses: 0 };
-	let cacheError: string | undefined;
+	let _cacheError: string | undefined;
 
 	if (points.length === 0 || points.length !== matches.length) {
 		return {

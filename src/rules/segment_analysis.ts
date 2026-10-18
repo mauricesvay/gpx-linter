@@ -19,7 +19,6 @@ import {
 } from "../geo";
 import type { OsmWay } from "../osm";
 import type {
-	AvailabilityStatus,
 	Confidence,
 	DataSourceAvailability,
 	MatchResult,
@@ -33,7 +32,6 @@ import {
 	isConfidentMatch,
 	isOneWay,
 	isTwoWay,
-	numberParam,
 	result,
 	sameSegment,
 	uncertaintyResult,
@@ -428,7 +426,7 @@ function computeAssociationScore(run: RouteRun, way: OsmWay): number {
 
 	for (const edge of run.edges) {
 		const dist = pointToWayDistanceMeters(edge.from, way);
-		const hw = (way.tags?.highway ?? "").toLowerCase();
+		const _hw = (way.tags?.highway ?? "").toLowerCase();
 
 		// Check layer compatibility
 		if (!isLayerCompatible(edge.from, way)) continue;

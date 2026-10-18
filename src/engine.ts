@@ -10,7 +10,6 @@ import {
 	routeGaps,
 	sharpTurns,
 } from "./rules";
-import { errorMessage } from "./utils";
 import type {
 	RuleContext,
 	RuleDefinition,
@@ -18,6 +17,7 @@ import type {
 	Severity,
 	Trackpoint,
 } from "./types";
+import { errorMessage } from "./utils";
 
 // ── Rule registry types ──────────────────────────────────
 

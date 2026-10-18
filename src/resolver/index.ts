@@ -10,13 +10,13 @@ import type {
 import { message } from "../utils";
 import {
 	CACHE_VERSION,
+	type CacheEntry,
 	cacheKey,
 	compactCache,
 	DEFAULT_CACHE_DIR,
 	isUsableCacheEntry,
 	ROAD_CACHE_TTL_MS,
 	readCache,
-	type CacheEntry,
 } from "./cache";
 import { resolveWithOverpass } from "./overpass";
 

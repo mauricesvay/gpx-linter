@@ -1,7 +1,5 @@
-import { z } from "zod";
-
 import { readFile } from "node:fs/promises";
-import path from "node:path";
+import { z } from "zod";
 
 import { isWithinFeature } from "../geo";
 import type {
@@ -9,7 +7,6 @@ import type {
 	GeoJsonGeometry,
 	RuleDefinition,
 	RuleResult,
-	Severity,
 	Trackpoint,
 } from "../types";
 import { errorMessage } from "../utils";

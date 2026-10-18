@@ -12,12 +12,8 @@ import type {
 	DataSourceAvailability,
 	LinterConfig,
 	LintReport,
-	TrackCoordinate,
 	Trackpoint,
 } from "./types";
-import { errorMessage } from "./utils";
-import type { MatchResult } from "./types";
-import type { OsmWay } from "./osm/cache";
 
 // ── Service interfaces (DI boundaries) ──────────────────
 
@@ -59,7 +55,7 @@ export interface FileSystem {
 // ── Default production implementations ──────────────────
 
 const defaultResolver: RouteResolver = {
-	resolve: (points, options) => resolveRoads(points, options as any),
+	resolve: (points, options) => resolveRoads(points, options),
 };
 
 const defaultEnricher: OsmEnricher = {
@@ -156,7 +152,7 @@ export async function runLinter(options: LintOptions): Promise<LintResult> {
 		userConfig ??
 		(await loadConfig(
 			// config file path would come from options in a real CLI
-			undefined,
+			"",
 		));
 	if (rule && (enable || disable)) {
 		config = applyRuleOverride(config, rule, enable === true);

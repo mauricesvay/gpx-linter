@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { bearingDegrees, pointToGeometryDistanceMeters } from "../geo";
+import { readFile } from "node:fs/promises";
 import {
 	AMBIGUITY_GAP_METERS,
 	BBOX_PADDING_DEGREES,
@@ -12,8 +11,8 @@ import {
 	OSM_CACHE_FILE_NAME,
 	OVERPASS_FALLBACK,
 	OVERPASS_PRIMARY,
-	OVERPASS_TTL_MS,
 	OVERPASS_TIMEOUT_MS,
+	OVERPASS_TTL_MS,
 } from "../constants";
 import type {
 	CacheStats,
@@ -34,18 +33,11 @@ export {
 	OSM_CACHE_FILE_NAME,
 	OVERPASS_FALLBACK,
 	OVERPASS_PRIMARY,
-	OVERPASS_TTL_MS,
 	OVERPASS_TIMEOUT_MS,
+	OVERPASS_TTL_MS,
 };
-import {
-	confidenceFromScore,
-	delay,
-	errorMessage,
-	isRecord,
-	retryAfterMilliseconds,
-	responseBodyDetail,
-	truncateText,
-} from "../utils";
+
+import { isRecord } from "../utils";
 
 /* ── public types ───────────────────────────────────────────────────── */
 

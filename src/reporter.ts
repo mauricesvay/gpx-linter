@@ -1,3 +1,4 @@
+import { formatHtml as formatHtmlOutput } from "./htmlTemplate";
 import type {
 	CacheStats,
 	DataAvailability,
@@ -6,7 +7,6 @@ import type {
 	RuleResult,
 	TrackCoordinate,
 } from "./types";
-import { formatHtml as formatHtmlOutput } from "./htmlTemplate";
 
 interface ResultRange {
 	ruleId: string;
@@ -39,8 +39,7 @@ function groupContiguousResults(results: RuleResult[]): ResultRange[] {
 	let current: ResultRange | null = null;
 
 	for (const r of indexed) {
-		const idx = r.pointIndex!;
-		const segmentId = (r as unknown as { segmentId?: number }).segmentId;
+		const idx = r.pointIndex ?? -1;
 
 		if (
 			!current ||

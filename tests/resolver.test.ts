@@ -78,9 +78,9 @@ describe("road matching", () => {
 		// P0-3: ambiguous results are preserved in ambiguousMatches.
 		// Continuity bonus resolves the 2nd point; only 1st stays ambiguous.
 		expect(result.ambiguousMatches).toBeDefined();
-		expect(result.ambiguousMatches!.length).toBe(1);
-		expect(result.ambiguousMatches![0].status).toBe("ambiguous");
-		expect(result.ambiguousMatches![0].confidence).toBe("low");
+		expect(result.ambiguousMatches?.length).toBe(1);
+		expect(result.ambiguousMatches?.[0].status).toBe("ambiguous");
+		expect(result.ambiguousMatches?.[0].confidence).toBe("low");
 	});
 
 	it("caches complete matches and reports cache hits on subsequent runs", async () => {

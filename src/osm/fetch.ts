@@ -1,57 +1,44 @@
-import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { bearingDegrees, pointToGeometryDistanceMeters } from "../geo";
-import type {
-	CacheStats,
-	DataSourceAvailability,
-	MatchResult,
-	Trackpoint,
-} from "../types";
 import {
-	confidenceFromScore,
+	CLI_VERSION,
+	MAX_REQUESTS_PER_SECOND,
+	RATE_LIMIT_BACKOFF_MULTIPLIER,
+	RATE_LIMIT_BASE_MS,
+	RATE_LIMIT_JITTER_FRACTION,
+	RATE_LIMIT_MAX_MS,
+} from "../constants";
+import {
 	delay,
 	errorMessage,
 	isRecord,
-	retryAfterMilliseconds,
 	responseBodyDetail,
-	truncateText,
+	retryAfterMilliseconds,
 } from "../utils";
 import {
-	CLI_VERSION,
-	RATE_LIMIT_BASE_MS,
-	RATE_LIMIT_MAX_MS,
-	RATE_LIMIT_JITTER_FRACTION,
-	RATE_LIMIT_BACKOFF_MULTIPLIER,
-	MAX_REQUESTS_PER_SECOND,
-} from "../constants";
-import {
+	bboxKey,
+	bboxQuery,
 	CACHE_VERSION,
+	chunkBbox,
 	DEFAULT_CACHE_DIR,
 	OSM_CACHE_FILE_NAME,
-	OVERPASS_FALLBACK,
-	OVERPASS_PRIMARY,
-	OVERPASS_TTL_MS,
-	OVERPASS_TIMEOUT_MS,
 	type OsmBbox,
 	type OsmCacheEntry,
 	type OsmData,
 	type OsmDataOptions,
 	type OsmWay,
-	chunkBbox,
+	OVERPASS_FALLBACK,
+	OVERPASS_PRIMARY,
+	OVERPASS_TIMEOUT_MS,
+	OVERPASS_TTL_MS,
 	readOsmCache,
-	isOsmWay,
-	bboxKey,
-	bboxQuery,
 } from "./cache";
 
 /* ── Rate-limit / backoff helpers ───────────────────────────────────── */
 
 /** Compute exponential backoff with jitter for a given attempt number. */
 function computeBackoffMs(attempt: number): number {
-	const baseMs =
-		RATE_LIMIT_BASE_MS * Math.pow(RATE_LIMIT_BACKOFF_MULTIPLIER, attempt);
+	const baseMs = RATE_LIMIT_BASE_MS * RATE_LIMIT_BACKOFF_MULTIPLIER ** attempt;
 	const capped = Math.min(baseMs, RATE_LIMIT_MAX_MS);
 	const jitter = Math.random() * capped * RATE_LIMIT_JITTER_FRACTION;
 	return capped + jitter;

@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>// Packaging/modules magic dance.
-(function (factory) {
+(((factory) => {
     var L;
     if (typeof define === 'function' && define.amd) {
         // AMD
@@ -20,13 +20,13 @@
             throw 'Leaflet must be loaded first';
         factory(window.L);
     }
-}(function (L) {
+})((L) => {
 "use strict";
 
-L.Polyline._flat = L.LineUtil.isFlat || L.Polyline._flat || function (latlngs) {
+L.Polyline._flat = L.LineUtil.isFlat || L.Polyline._flat || ((latlngs) => {
     // true if it's a flat array of latlngs; false if nested
     return !L.Util.isArray(latlngs[0]) || (typeof latlngs[0][0] !== 'object' && typeof latlngs[0][0] !== 'undefined');
-};
+});
 
 /**
  * @fileOverview Leaflet Geometry utilities for distances and linear referencing.
@@ -45,9 +45,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.LatLng} latlngB geographical point B
         @returns {Number} planar distance
      */
-    distance: function (map, latlngA, latlngB) {
-        return map.latLngToLayerPoint(latlngA).distanceTo(map.latLngToLayerPoint(latlngB));
-    },
+    distance: (map, latlngA, latlngB) => map.latLngToLayerPoint(latlngA).distanceTo(map.latLngToLayerPoint(latlngB)),
 
     /**
         Shortcut function for planar distance between a {L.LatLng} and a segment (A-B).
@@ -57,7 +55,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.LatLng} latlngB geographical point B of the segment
         @returns {Number} planar distance
     */
-    distanceSegment: function (map, latlng, latlngA, latlngB) {
+    distanceSegment: (map, latlng, latlngA, latlngB) => {
         var p = map.latLngToLayerPoint(latlng),
            p1 = map.latLngToLayerPoint(latlngA),
            p2 = map.latLngToLayerPoint(latlngB);
@@ -70,25 +68,25 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {String} unit 'metric' or 'imperial'
         @returns {String} in yard or miles
     */
-    readableDistance: function (distance, unit) {
+    readableDistance: (distance, unit) => {
         var isMetric = (unit !== 'imperial'),
             distanceStr;
         if (isMetric) {
             // show metres when distance is < 1km, then show km
             if (distance > 1000) {
-                distanceStr = (distance  / 1000).toFixed(2) + ' km';
+                distanceStr = `${(distance  / 1000).toFixed(2)} km`;
             }
             else {
-                distanceStr = distance.toFixed(1) + ' m';
+                distanceStr = `${distance.toFixed(1)} m`;
             }
         }
         else {
             distance *= 1.09361;
             if (distance > 1760) {
-                distanceStr = (distance / 1760).toFixed(2) + ' miles';
+                distanceStr = `${(distance / 1760).toFixed(2)} miles`;
             }
             else {
-                distanceStr = distance.toFixed(1) + ' yd';
+                distanceStr = `${distance.toFixed(1)} yd`;
             }
         }
         return distanceStr;
@@ -102,7 +100,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {?Number} [tolerance=0.2] tolerance to accept if latlng belongs really
         @returns {boolean}
      */
-    belongsSegment: function(latlng, latlngA, latlngB, tolerance) {
+    belongsSegment: (latlng, latlngA, latlngB, tolerance) => {
         tolerance = tolerance === undefined ? 0.2 : tolerance;
         var hypotenuse = latlngA.distanceTo(latlngB),
             delta = latlngA.distanceTo(latlng) + latlng.distanceTo(latlngB) - hypotenuse;
@@ -116,7 +114,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
      * @param {L.Polyline|Array<L.Point>|Array<L.LatLng>} coords Set of coordinates
      * @returns {Number} Total length (pixels for Point, meters for LatLng)
      */
-    length: function (coords) {
+    length: (coords) => {
         var accumulated = L.GeometryUtil.accumulatedLengths(coords);
         return accumulated.length > 0 ? accumulated[accumulated.length-1] : 0;
     },
@@ -126,8 +124,8 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
      * @param {L.Polyline|Array<L.Point>|Array<L.LatLng>} coords Set of coordinates
      * @returns {Array<Number>} Array of accumulated lengths (pixels for Point, meters for LatLng)
      */
-    accumulatedLengths: function (coords) {
-        if (typeof coords.getLatLngs == 'function') {
+    accumulatedLengths: (coords) => {
+        if (typeof coords.getLatLngs === 'function') {
             coords = coords.getLatLngs();
         }
         if (coords.length === 0)
@@ -152,7 +150,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.LatLng} latlngB geographical point B of the segment
         @returns {L.LatLng} Closest geographical point
     */
-    closestOnSegment: function (map, latlng, latlngA, latlngB) {
+    closestOnSegment: (map, latlng, latlngA, latlngB) => {
         var maxzoom = map.getMaxZoom();
         if (maxzoom === Infinity)
             maxzoom = map.getZoom();
@@ -172,7 +170,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
     @param {L.Circle} circle - A Circle defined by a center and a radius
     @returns {L.LatLng} Closest geographical point on the circle circumference
     */
-    closestOnCircle: function (circle, latLng) {
+    closestOnCircle: (circle, latLng) => {
         const center = circle.getLatLng();
         const circleRadius = circle.getRadius();
         const radius = typeof circleRadius === 'number' ? circleRadius : circleRadius.radius;
@@ -208,16 +206,16 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {?boolean} [vertices=false] - Whether to restrict to path vertices.
         @returns {L.LatLng} Closest geographical point or null if layer param is incorrect
     */
-    closest: function (map, layer, latlng, vertices) {
+    closest: (map, layer, latlng, vertices) => {
 
         var latlngs,
             mindist = Infinity,
             result = null,
             i, n, distance, subResult;
 
-        if (layer instanceof Array) {
+        if (Array.isArray(layer)) {
             // if layer is Array<Array<T>>
-            if (layer[0] instanceof Array && typeof layer[0][0] !== 'number') {
+            if (Array.isArray(layer[0]) && typeof layer[0][0] !== 'number') {
                 // if we have nested arrays, we calc the closest for each array
                 // recursive
                 for (i = 0; i < layer.length; i++) {
@@ -248,7 +246,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         // add the last segment for L.Polygon
         if (layer instanceof L.Polygon) {
             // add the last segment for each child that is a nested array
-            var addLastSegment = function(latlngs) {
+            var addLastSegment = (latlngs) => {
                 if (L.Polyline._flat(latlngs)) {
                     latlngs.push(latlngs[0]);
                 } else {
@@ -336,7 +334,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
                     distance = L.GeometryUtil.distance(map, latlng, ll);
                 } else
                 // Single dimension, snap on points, else snap on closest
-                if (typeof layer.getLatLng == 'function') {
+                if (typeof layer.getLatLng === 'function') {
                     ll = layer.getLatLng();
                     distance = L.GeometryUtil.distance(map, latlng, ll);
                 }
@@ -384,7 +382,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
                     distance = L.GeometryUtil.distance(map, latlng, ll);
                 } else
                 // Single dimension, snap on points, else snap on closest
-                if (typeof layer.getLatLng == 'function') {
+                if (typeof layer.getLatLng === 'function') {
                     ll = layer.getLatLng();
                     distance = L.GeometryUtil.distance(map, latlng, ll);
                 }
@@ -396,9 +394,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
             }
         }
 
-        results.sort(function(a, b) {
-            return a.distance - b.distance;
-        });
+        results.sort((a, b) => a.distance - b.distance);
 
         if (results.length > n) {
             return results.slice(0, n);
@@ -415,8 +411,8 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
        @param {?Number} [radius=Infinity] - Search radius in pixels
        @return {object[]} an array of objects including layer within the radius, closest latlng, and distance
      */
-    layersWithin: function(map, layers, latlng, radius) {
-      radius = typeof radius == 'number' ? radius : Infinity;
+    layersWithin: (map, layers, latlng, radius) => {
+      radius = typeof radius === 'number' ? radius : Infinity;
 
       var results = [];
       var ll = null;
@@ -425,7 +421,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
       for (var i = 0, n = layers.length; i < n; i++) {
         var layer = layers[i];
 
-        if (typeof layer.getLatLng == 'function') {
+        if (typeof layer.getLatLng === 'function') {
             ll = layer.getLatLng();
             distance = L.GeometryUtil.distance(map, latlng, ll);
         }
@@ -439,9 +435,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         }
       }
 
-      var sortedResults = results.sort(function(a, b) {
-          return a.distance - b.distance;
-      });
+      var sortedResults = results.sort((a, b) => a.distance - b.distance);
 
       return sortedResults;
     },
@@ -459,16 +453,16 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {?boolean} [withVertices=true] - Snap to layers vertices or segment points (not only vertex)
         @returns {object} with snapped {LatLng} and snapped {Layer} or null if tolerance exceeded.
     */
-    closestLayerSnap: function (map, layers, latlng, tolerance, withVertices) {
-        tolerance = typeof tolerance == 'number' ? tolerance : Infinity;
-        withVertices = typeof withVertices == 'boolean' ? withVertices : true;
+    closestLayerSnap: (map, layers, latlng, tolerance, withVertices) => {
+        tolerance = typeof tolerance === 'number' ? tolerance : Infinity;
+        withVertices = typeof withVertices === 'boolean' ? withVertices : true;
 
         var result = L.GeometryUtil.closestLayer(map, layers, latlng);
         if (!result || result.distance > tolerance)
             return null;
 
         // If snapped layer is linear, try to snap on vertices (extremities and middle points)
-        if (withVertices && typeof result.layer.getLatLngs == 'function') {
+        if (withVertices && typeof result.layer.getLatLngs === 'function') {
             var closest = L.GeometryUtil.closest(map, result.layer, result.latlng, true);
             if (closest.distance < tolerance) {
                 result.latlng = closest;
@@ -485,12 +479,10 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {Number} the length ratio, expressed as a decimal between 0 and 1, inclusive.
         @returns {L.Point} the interpolated point.
     */
-    interpolateOnPointSegment: function (pA, pB, ratio) {
-        return L.point(
+    interpolateOnPointSegment: (pA, pB, ratio) => L.point(
             (pA.x * (1 - ratio)) + (ratio * pB.x),
             (pA.y * (1 - ratio)) + (ratio * pB.y)
-        );
-    },
+        ),
 
     /**
         Returns the coordinate of the point located on a line at the specified ratio of the line length.
@@ -500,7 +492,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @returns {Object} an object with latLng ({LatLng}) and predecessor ({Number}), the index of the preceding vertex in the Polyline
         (-1 if the interpolated point is the first vertex)
     */
-    interpolateOnLine: function (map, latLngs, ratio) {
+    interpolateOnLine: (map, latLngs, ratio) => {
         latLngs = (latLngs instanceof L.Polyline) ? latLngs.getLatLngs() : latLngs;
         var n = latLngs.length;
         if (n < 2) {
@@ -516,7 +508,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
                 predecessor: -1
             };
         }
-        if (ratio == 1) {
+        if (ratio === 1) {
             return {
                 latLng: latLngs[latLngs.length -1] instanceof L.LatLng ? latLngs[latLngs.length -1] : L.latLng(latLngs[latLngs.length -1]),
                 predecessor: latLngs.length - 2
@@ -548,7 +540,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
 			cumulativeDistanceToB += pointA.distanceTo(pointB);
 		}
 		
-		if (pointA == undefined && pointB == undefined) { // Happens when line has no length
+		if (pointA === undefined && pointB === undefined) { // Happens when line has no length
 			var pointA = pts[0], pointB = pts[1], i = 1;
 		}
 
@@ -570,7 +562,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.LatLng} latlng The position to search
         @returns {Number} Float between 0 and 1
     */
-    locateOnLine: function (map, polyline, latlng) {
+    locateOnLine: (map, polyline, latlng) => {
         var latlngs = polyline.getLatLngs();
         if (latlng.equals(latlngs[0]))
             return 0.0;
@@ -593,7 +585,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
             }
         }
         if (!found) {
-            throw "Could not interpolate " + latlng.toString() + " within " + polyline.toString();
+            throw `Could not interpolate ${latlng.toString()} within ${polyline.toString()}`;
         }
         return portion / total_length;
     },
@@ -603,9 +595,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.PolyLine} polyline polyline to reverse
         @returns {L.PolyLine} polyline reversed
     */
-    reverse: function (polyline) {
-        return L.polyline(polyline.getLatLngs().slice(0).reverse());
-    },
+    reverse: (polyline) => L.polyline(polyline.getLatLngs().slice(0).reverse()),
 
     /**
         Returns a sub-part of the polyline, from start to end.
@@ -616,7 +606,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {Number} end ratio, expressed as a decimal between 0 and 1, inclusive
         @returns {Array<L.LatLng>} new polyline
      */
-    extract: function (map, polyline, start, end) {
+    extract: (map, polyline, start, end) => {
         if (start > end) {
             return L.GeometryUtil.extract(map, L.GeometryUtil.reverse(polyline), 1.0-start, 1.0-end);
         }
@@ -629,14 +619,14 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
             startpoint = L.GeometryUtil.interpolateOnLine(map, polyline, start),
             endpoint = L.GeometryUtil.interpolateOnLine(map, polyline, end);
         // Return single point if start == end
-        if (start == end) {
+        if (start === end) {
             var point = L.GeometryUtil.interpolateOnLine(map, polyline, end);
             return [point.latLng];
         }
         // Array.slice() works indexes at 0
-        if (startpoint.predecessor == -1)
+        if (startpoint.predecessor === -1)
             startpoint.predecessor = 0;
-        if (endpoint.predecessor == -1)
+        if (endpoint.predecessor === -1)
             endpoint.predecessor = 0;
         var result = latlngs.slice(startpoint.predecessor+1, endpoint.predecessor+1);
         result.unshift(startpoint.latLng);
@@ -650,7 +640,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.PolyLine} other Second polyline
         @returns {bool}
     */
-    isBefore: function (polyline, other) {
+    isBefore: (polyline, other) => {
         if (!other) return false;
         var lla = polyline.getLatLngs(),
             llb = other.getLatLngs();
@@ -663,7 +653,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.PolyLine} other Second polyline
         @returns {bool}
     */
-    isAfter: function (polyline, other) {
+    isAfter: (polyline, other) => {
         if (!other) return false;
         var lla = polyline.getLatLngs(),
             llb = other.getLatLngs();
@@ -676,7 +666,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.PolyLine} other Second polyline
         @returns {bool}
     */
-    startsAtExtremity: function (polyline, other) {
+    startsAtExtremity: (polyline, other) => {
         if (!other) return false;
         var lla = polyline.getLatLngs(),
             llb = other.getLatLngs(),
@@ -690,9 +680,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.Point} b Coordinates of point B
         @returns {Number} horizontal angle
      */
-    computeAngle: function(a, b) {
-        return (Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI);
-    },
+    computeAngle: (a, b) => (Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI),
 
     /**
        Returns slope (Ax+B) between two points.
@@ -700,7 +688,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.Point} b Coordinates of point B
         @returns {Object} with ``a`` and ``b`` properties.
      */
-    computeSlope: function(a, b) {
+    computeSlope: (a, b) => {
         var s = (b.y - a.y) / (b.x - a.x),
             o = a.y - (s * a.x);
         return {'a': s, 'b': o};
@@ -713,7 +701,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
         @param {L.LatLng} latlngCenter: center of rotation
         @returns {L.LatLng} rotated point
      */
-    rotatePoint: function(map, latlngPoint, angleDeg, latlngCenter) {
+    rotatePoint: (map, latlngPoint, angleDeg, latlngCenter) => {
         var maxzoom = map.getMaxZoom();
         if (maxzoom === Infinity)
             maxzoom = map.getZoom();
@@ -732,7 +720,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
        @param {L.LatLng} latlng2: destination point of the bearing
        @returns {float} degrees clockwise from north.
     */
-    bearing: function(latlng1, latlng2) {
+    bearing: (latlng1, latlng2) => {
         var rad = Math.PI / 180,
             lat1 = latlng1.lat * rad,
             lat2 = latlng2.lat * rad,
@@ -756,7 +744,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
        Many thanks to Chris Veness at http://www.movable-type.co.uk/scripts/latlong.html
        for a great reference and examples.
     */
-    destination: function(latlng, heading, distance) {
+    destination: (latlng, heading, distance) => {
         heading = (heading + 360) % 360;
         var rad = Math.PI / 180,
             radInv = 180 / Math.PI,
@@ -785,7 +773,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
        @param {L.LatLng} latlngB: geographical point B of the segment
        @returns {Float} the angle in degrees.
     */
-    angle: function(map, latlngA, latlngB) {
+    angle: (map, latlngA, latlngB) => {
       var pointA = map.latLngToContainerPoint(latlngA),
           pointB = map.latLngToContainerPoint(latlngB),
           angleDeg = Math.atan2(pointB.y - pointA.y, pointB.x - pointA.x) * 180 / Math.PI + 90;
@@ -801,7 +789,7 @@ L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
        @param {float} distance: distance in meters
        @returns {L.latLng} the destination point.
     */
-    destinationOnSegment: function(map, latlngA, latlngB, distance) {
+    destinationOnSegment: (map, latlngA, latlngB, distance) => {
       var angleDeg = L.GeometryUtil.angle(map, latlngA, latlngB),
           latlng = L.GeometryUtil.destination(latlngA, angleDeg, distance);
       return L.GeometryUtil.closestOnSegment(map, latlng, latlngA, latlngB);
@@ -844,14 +832,12 @@ L.DistanceMarkers = L.LayerGroup.extend({
 		var showAll = Math.min(map.getMaxZoom(), options.showAll || 12);
 		var cssClass = options.cssClass || 'dist-marker';
 		var iconSize = options.iconSize !== undefined ? options.iconSize : [12, 12];
-		var textFunction = options.textFunction || function(distance, i, offset) {
-			return i;
-		};
+		var textFunction = options.textFunction || ((distance, i, offset) => i);
 
 		var zoomLayers = {};
 		// Get line coords as an array
 		var coords = line;
-		if (typeof line.getLatLngs == 'function') {
+		if (typeof line.getLatLngs === 'function') {
 			coords = line.getLatLngs();
 		}
 		// Get accumulated line lengths as well as overall length
@@ -890,21 +876,20 @@ L.DistanceMarkers = L.LayerGroup.extend({
 		}
 
 		var currentZoomLevel = 0;
-		var markerLayer = this;
-		var updateMarkerVisibility = function() {
+		var updateMarkerVisibility = () => {
 			var oldZoom = currentZoomLevel;
 			var newZoom = currentZoomLevel = map.getZoom();
 
 			if (newZoom > oldZoom) {
 				for (var i = oldZoom + 1; i <= newZoom; ++i) {
 					if (zoomLayers[i] !== undefined) {
-						markerLayer.addLayer(zoomLayers[i]);
+						this.addLayer(zoomLayers[i]);
 					}
 				}
 			} else if (newZoom < oldZoom) {
 				for (var i = oldZoom; i > newZoom; --i) {
 					if (zoomLayers[i] !== undefined) {
-						markerLayer.removeLayer(zoomLayers[i]);
+						this.removeLayer(zoomLayers[i]);
 					}
 				}
 			}
@@ -915,7 +900,7 @@ L.DistanceMarkers = L.LayerGroup.extend({
 		updateMarkerVisibility();
 	},
 
-	_minimumZoomLevelForItem: function (item, showAllLevel) {
+	_minimumZoomLevelForItem: (item, showAllLevel) => {
 		var zoom = showAllLevel;
 		var i = item;
 		while (i > 0 && i % 2 === 0) {
@@ -1962,7 +1947,7 @@ li{margin:.55rem 0}
   </li>
 </ul><h2>Rules</h2><ul><li>max_slope: enabled</li><li>contraflow_bike: enabled (373 unknown)</li><li>roadworks: enabled (13 failures)</li><li>sharp_turn: disabled (1 skipped)</li><li>off_road: disabled (1 skipped)</li><li>missing_elevation: disabled (1 skipped)</li><li>route_gaps: disabled (1 skipped)</li><li>loop_closure: disabled (1 skipped)</li><li>bike_lane_no_same_direction_car_lane: enabled (65 unknown)</li></ul><p>Exit code: 2</p>
 <script>
-(function() {
+(() => {
   var track = [[48.853335,2.369091],[48.853329,2.369215],[48.853416,2.36925],[48.853434,2.369259],[48.853415,2.369351],[48.853335,2.369519],[48.853228,2.369556],[48.853224,2.369716],[48.853222,2.36989],[48.85322,2.370058],[48.85322,2.370113],[48.853218,2.370229],[48.853121,2.370315],[48.852654,2.37075],[48.852418,2.371025],[48.851401,2.372211],[48.851328,2.372295],[48.851317,2.372309],[48.850774,2.372942],[48.850616,2.373122],[48.850563,2.373182],[48.85048,2.373279],[48.850133,2.373676],[48.850062,2.373754],[48.850017,2.373805],[48.849695,2.374194],[48.849614,2.374287],[48.849552,2.374359],[48.849227,2.374712],[48.849161,2.374773],[48.849087,2.374826],[48.848984,2.374947],[48.848505,2.375731],[48.848433,2.37586],[48.84835,2.376009],[48.848295,2.376098],[48.847987,2.376617],[48.847933,2.376707],[48.847754,2.377017],[48.847715,2.37708],[48.847372,2.377651],[48.847319,2.37773],[48.846544,2.378809],[48.846523,2.378842],[48.846511,2.378734],[48.846508,2.378705],[48.8465,2.37863],[48.846388,2.377586],[48.84639,2.37756],[48.846458,2.377301],[48.846446,2.377259],[48.846428,2.377222],[48.846398,2.377161],[48.846369,2.377099],[48.846365,2.377094],[48.846321,2.377039],[48.846277,2.376955],[48.846195,2.376258],[48.846177,2.376101],[48.846171,2.376052],[48.846167,2.376012],[48.846147,2.375711],[48.846142,2.375674],[48.846137,2.375633],[48.846128,2.375554],[48.846027,2.374756],[48.845989,2.374457],[48.845983,2.374403],[48.845974,2.374327],[48.845938,2.374018],[48.845937,2.374007],[48.845936,2.373977],[48.845934,2.373881],[48.845934,2.373802],[48.845892,2.373468],[48.84589,2.373451],[48.845881,2.373378],[48.845875,2.37333],[48.845823,2.372881],[48.845773,2.372574],[48.845757,2.372545],[48.845734,2.372528],[48.845707,2.372495],[48.845706,2.372426],[48.845706,2.372322],[48.845736,2.372253],[48.845702,2.372172],[48.845684,2.371971],[48.845612,2.37138],[48.845565,2.371204],[48.845544,2.370885],[48.845515,2.370593],[48.845432,2.370248],[48.845413,2.36998],[48.845392,2.3697],[48.845279,2.368606],[48.84527,2.368521],[48.845365,2.368385],[48.845389,2.368317],[48.845685,2.367929],[48.845791,2.367783],[48.845833,2.367731],[48.845841,2.367722],[48.845874,2.367677],[48.845917,2.367618],[48.845968,2.367555],[48.845997,2.367519],[48.846373,2.367025],[48.84641,2.367005],[48.846417,2.367002],[48.846466,2.366998],[48.846504,2.366941],[48.846528,2.366903],[48.846552,2.366867],[48.846601,2.366797],[48.84671,2.366659],[48.84696,2.366327],[48.846982,2.366299],[48.847305,2.365877],[48.847464,2.365674],[48.847474,2.365658],[48.847511,2.365609],[48.847545,2.36555],[48.847593,2.365465],[48.847616,2.365431],[48.84782,2.365157],[48.848144,2.365024],[48.848222,2.364996],[48.848276,2.364976],[48.848338,2.364939],[48.848855,2.364634],[48.848915,2.364599],[48.848974,2.364563],[48.849018,2.364526],[48.849554,2.364074],[48.849593,2.364043],[48.849635,2.364006],[48.84966,2.363975],[48.850391,2.363066],[48.850967,2.362351],[48.851,2.362338],[48.851052,2.362334],[48.851118,2.362549],[48.851156,2.362524],[48.851215,2.362487],[48.85134,2.362406],[48.851391,2.362336],[48.852406,2.36067],[48.852438,2.36054],[48.85247,2.360571],[48.85246,2.360589],[48.85247,2.360571],[48.852438,2.36054],[48.852465,2.3604],[48.852649,2.359879],[48.852897,2.359171],[48.852982,2.35903],[48.853003,2.358999],[48.853021,2.358969],[48.853131,2.358732],[48.85337,2.358076],[48.85341,2.357966],[48.853428,2.357898],[48.853444,2.357835],[48.853452,2.357783],[48.853463,2.357735],[48.853721,2.356968],[48.853789,2.356894],[48.853873,2.356666],[48.853885,2.356496],[48.854115,2.355846],[48.854135,2.355792],[48.854154,2.355741],[48.854394,2.35515],[48.85442,2.355087],[48.854447,2.355012],[48.854462,2.354971],[48.854483,2.35491],[48.8545,2.354863],[48.854542,2.354754],[48.854976,2.353636],[48.854996,2.353587],[48.855017,2.353536],[48.855229,2.352998],[48.855258,2.352968],[48.855288,2.352963],[48.855386,2.353016],[48.855396,2.352988],[48.855419,2.352927],[48.85546,2.352953],[48.855612,2.353032],[48.855849,2.353158],[48.855876,2.353172],[48.855949,2.353213],[48.856109,2.35331],[48.856507,2.353532],[48.85656,2.353561],[48.856812,2.353696],[48.856859,2.353736],[48.85691,2.35381],[48.856976,2.353524],[48.857231,2.352426],[48.857254,2.352327],[48.857414,2.351554],[48.857431,2.351491],[48.85745,2.351423],[48.857519,2.351181],[48.857615,2.350869],[48.85763,2.350822],[48.857723,2.350668],[48.857875,2.350191],[48.857992,2.349815],[48.858016,2.349741],[48.858045,2.349653],[48.858228,2.34909],[48.858458,2.348377],[48.858512,2.348215],[48.858536,2.34814],[48.858568,2.348156],[48.858619,2.348183],[48.858665,2.348207],[48.859488,2.348675],[48.859523,2.348695],[48.859542,2.348706],[48.859584,2.34873],[48.860007,2.348975],[48.860047,2.348997],[48.860076,2.349014],[48.860112,2.349033],[48.860562,2.349271],[48.860589,2.349286],[48.860632,2.34931],[48.860956,2.349492],[48.861237,2.349658],[48.86197,2.350066],[48.861989,2.350077],[48.862005,2.350086],[48.862036,2.350102],[48.862056,2.350113],[48.862457,2.350329],[48.862475,2.350339],[48.862497,2.350351],[48.86293,2.350597],[48.862942,2.350604],[48.862967,2.350617],[48.863339,2.35082],[48.86337,2.350837],[48.863426,2.350867],[48.863492,2.350905],[48.863564,2.350947],[48.864113,2.351265],[48.864185,2.351307],[48.864206,2.351317],[48.864248,2.351339],[48.864304,2.351369],[48.864359,2.351391],[48.864382,2.351506],[48.864413,2.351656],[48.864423,2.351707],[48.864498,2.352076],[48.864765,2.353262],[48.864772,2.353292],[48.864804,2.353429],[48.864828,2.353528],[48.864838,2.353571],[48.865038,2.35441],[48.865057,2.354489],[48.865068,2.35454],[48.865085,2.354619],[48.865278,2.355448],[48.865286,2.355485],[48.865303,2.355575],[48.865319,2.355661],[48.865342,2.355777],[48.865363,2.355829],[48.865425,2.356093],[48.865441,2.356167],[48.865459,2.356244],[48.865465,2.356267],[48.865499,2.356417],[48.865585,2.356793],[48.86561,2.356905],[48.865652,2.357087],[48.865735,2.357457],[48.865758,2.357559],[48.865887,2.358125],[48.865923,2.358278],[48.866276,2.359784],[48.8664,2.360315],[48.866417,2.360386],[48.866432,2.360451],[48.866638,2.361287],[48.86671,2.361555],[48.866809,2.361927],[48.866843,2.362044],[48.867214,2.363063],[48.86724,2.363157],[48.867314,2.363426],[48.867383,2.363318],[48.867442,2.363223],[48.867472,2.363174],[48.867513,2.363103],[48.867911,2.362423],[48.867949,2.362358],[48.868073,2.362511],[48.868294,2.362782],[48.868353,2.362856],[48.868421,2.362939],[48.868467,2.362995],[48.868561,2.363059],[48.868611,2.36309],[48.86869,2.363019],[48.868723,2.362989],[48.868831,2.362893],[48.869102,2.362649],[48.869112,2.362639],[48.869137,2.362617],[48.869899,2.361934],[48.870527,2.361373],[48.870626,2.361286],[48.870647,2.361268],[48.87068,2.361293],[48.870788,2.361376],[48.87085,2.361423],[48.870894,2.361458],[48.87144,2.36203],[48.871486,2.362079],[48.871903,2.362544],[48.871959,2.362607],[48.872013,2.362666],[48.872501,2.363213],[48.872552,2.363275],[48.872659,2.363405],[48.872851,2.363662],[48.872914,2.363746],[48.872957,2.363804],[48.873033,2.363917],[48.873185,2.36413],[48.873199,2.364151],[48.873226,2.36419],[48.873281,2.364143],[48.873543,2.363936],[48.873933,2.363633],[48.874059,2.36354],[48.874087,2.363597],[48.874357,2.363513],[48.874455,2.363516],[48.87471,2.3636],[48.875482,2.36427],[48.875517,2.3643],[48.875547,2.364327],[48.875922,2.364649],[48.875951,2.364674],[48.875974,2.364695],[48.876197,2.364889],[48.876254,2.364882],[48.877145,2.365651],[48.877242,2.365775],[48.877261,2.365789],[48.877329,2.365843],[48.877396,2.365909],[48.877433,2.365888],[48.877532,2.365739],[48.877599,2.365561],[48.87766,2.365486],[48.877677,2.365415],[48.877769,2.365482],[48.878177,2.365833],[48.878505,2.366115],[48.878686,2.366268],[48.878698,2.366238],[48.878713,2.366198],[48.878726,2.366165],[48.878672,2.366108]];
   var matchStatuses = ["ambiguous","ambiguous","ambiguous","matched","matched","matched","matched","matched","matched","matched","matched","ambiguous","ambiguous","ambiguous","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","ambiguous","matched","matched","matched","ambiguous","ambiguous","matched","ambiguous","ambiguous","matched","matched","matched","matched","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","matched","ambiguous","ambiguous","matched","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","ambiguous","ambiguous","ambiguous","matched","ambiguous","ambiguous","matched","ambiguous","ambiguous","ambiguous","matched","matched","matched","matched","matched","matched","ambiguous","ambiguous","ambiguous","matched","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","ambiguous","ambiguous","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","ambiguous","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","ambiguous","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","ambiguous","matched","matched","matched","ambiguous","matched","matched","ambiguous","matched","matched","matched","matched","ambiguous","ambiguous","ambiguous","matched","matched","ambiguous","matched","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","matched","ambiguous","ambiguous","ambiguous","matched","matched","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","ambiguous","matched","matched","ambiguous","ambiguous","ambiguous","matched","ambiguous","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","ambiguous","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","matched","ambiguous","ambiguous","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","ambiguous","matched","ambiguous","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","matched","ambiguous","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","matched","ambiguous","matched","matched","matched","matched","matched","matched","matched","matched","matched","ambiguous","ambiguous","ambiguous","matched","matched","ambiguous","ambiguous","matched","ambiguous","ambiguous","matched","matched","matched","matched","matched","matched","matched","matched","matched","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","ambiguous","matched","ambiguous","ambiguous","ambiguous","matched","ambiguous","ambiguous","ambiguous","matched","matched","ambiguous","ambiguous"];
   var matchHighways = ["primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","footway","footway","footway","footway","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","cycleway","service","service","service","service","residential","residential","residential","residential","residential","residential","residential","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","footway","footway","footway","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","tertiary","tertiary","tertiary","tertiary","tertiary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","cycleway","cycleway","cycleway","cycleway","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","primary","primary","primary","primary","primary","primary","primary","primary","residential","residential","residential","residential","service","service","footway","footway","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","footway","footway","footway","footway","footway","footway","footway","footway","footway","footway","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","secondary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","primary","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","residential","cycleway","cycleway","cycleway","cycleway","living_street","living_street","living_street","footway","pedestrian","pedestrian","pedestrian","pedestrian","pedestrian"];
@@ -1987,7 +1972,6 @@ li{margin:.55rem 0}
     path: '#7b1fa2',
     footway: '#7b1fa2',
     cycleway: '#7b1fa2',
-    pedestrian: '#7b1fa2',
     steps: '#7b1fa2',
     pedestrian: '#7b1fa2'
   };
@@ -2026,7 +2010,7 @@ li{margin:.55rem 0}
     interactive: false,
     distanceMarkers: { offset: 1000 }
   }).addTo(map);
-  segments.forEach(function(seg) {
+  segments.forEach((seg) => {
     var polyline = L.polyline(seg.coords, {
       color: seg.color,
       weight: 4
@@ -2039,19 +2023,17 @@ li{margin:.55rem 0}
   var severityColor = {error: '#d32f2f', warning: '#f57c00', info: '#1976d2'};
   var statusIcon = {pass: '\\u2714', fail: '\\u2717', unknown: '?', skipped: '\\u2014'};
   function escapeTooltipHtml(value) {
-    return String(value).replace(/[&<>"']/g, function(character) {
-      return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character];
-    });
+    return String(value).replace(/[&<>"']/g, (character) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character]));
   }
   function bindRoadworksTooltip(shape, properties) {
-    var propertyHtml = Object.keys(properties).map(function(key) {
+    var propertyHtml = Object.keys(properties).map((key) => {
       var value = properties[key];
       var displayValue = value === null ? '—' : (typeof value === 'object' ? JSON.stringify(value) : value);
-      return '<strong>' + escapeTooltipHtml(key) + ':</strong> ' + escapeTooltipHtml(displayValue);
+      return `<strong>${escapeTooltipHtml(key)}:</strong> ${escapeTooltipHtml(displayValue)}`;
     }).join('<br>');
     shape.bindTooltip(propertyHtml, {direction: 'top'});
   }
-  findings.forEach(function(f) {
+  findings.forEach((f) => {
     var color = severityColor[f.severity] || '#555';
     var marker = L.circleMarker([f.lat, f.lon], {
       radius: 8,
@@ -2061,10 +2043,10 @@ li{margin:.55rem 0}
       opacity: 1,
       fillOpacity: 0.8
     }).addTo(map);
-    var label = statusIcon[f.status] || '';
-    var distHtml = f.distanceFromStart !== null ? '<br>' + (f.distanceFromStart / 1000).toFixed(2) + ' km from start' : '';
-    marker.bindPopup('<strong>' + f.ruleId + '</strong><br>' + f.message + distHtml + '<br><em>' + f.status.toUpperCase() + '</em>');
-    if (f.evidence && f.evidence.geometry && f.ruleId === 'roadworks') {
+    var _label = statusIcon[f.status] || '';
+    var distHtml = f.distanceFromStart !== null ? `<br>${(f.distanceFromStart / 1000).toFixed(2)} km from start` : '';
+    marker.bindPopup(`<strong>${f.ruleId}</strong><br>${f.message}${distHtml}<br><em>${f.status.toUpperCase()}</em>`);
+    if (f.evidence?.geometry && f.ruleId === 'roadworks') {
       var geom = f.evidence.geometry;
       var geomColor = '#e65100';
       var geomStyle = {color: geomColor, weight: 2, fillOpacity: 0.15};
@@ -2076,7 +2058,7 @@ li{margin:.55rem 0}
       } else if (geom.type === 'Point') {
         shape = L.circle(geom.coordinates, {radius: 5, color: geomColor, fillColor: geomColor, fillOpacity: 0.5}).addTo(map);
       } else if (geom.type === 'MultiPoint') {
-        geom.coordinates.forEach(function(coords) {
+        geom.coordinates.forEach((coords) => {
           var pointShape = L.circle(coords, {radius: 5, color: geomColor, fillColor: geomColor, fillOpacity: 0.5}).addTo(map);
           if (f.evidence.properties) bindRoadworksTooltip(pointShape, f.evidence.properties);
         });
@@ -2087,14 +2069,14 @@ li{margin:.55rem 0}
     }
   });
   var rangeSegments = [{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.853329,2.369215],"end":[48.85322,2.370058]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.853218,2.370229],"end":[48.852654,2.37075]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.852418,2.371025],"end":[48.849227,2.374712]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.849161,2.374773],"end":[48.848505,2.375731]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.848433,2.37586],"end":[48.847987,2.376617]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.847933,2.376707],"end":[48.8465,2.37863]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.846388,2.377586],"end":[48.846398,2.377161]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.846369,2.377099],"end":[48.846195,2.376258]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.846177,2.376101],"end":[48.846128,2.375554]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.846027,2.374756],"end":[48.845934,2.373881]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.845934,2.373802],"end":[48.845823,2.372881]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.845773,2.372574],"end":[48.845706,2.372322]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.845736,2.372253],"end":[48.845684,2.371971]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.845612,2.37138],"end":[48.845515,2.370593]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.845432,2.370248],"end":[48.845392,2.3697]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.845279,2.368606],"end":[48.845389,2.368317]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.845685,2.367929],"end":[48.846373,2.367025]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.84641,2.367005],"end":[48.84696,2.366327]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.846982,2.366299],"end":[48.847305,2.365877]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.847474,2.365658],"end":[48.851391,2.362336]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.852406,2.36067],"end":[48.852438,2.36054]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.85247,2.360571],"end":[48.852465,2.3604]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.852649,2.359879],"end":[48.852897,2.359171]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.852982,2.35903],"end":[48.853721,2.356968]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.853789,2.356894],"end":[48.854115,2.355846]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.854135,2.355792],"end":[48.854394,2.35515]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.85442,2.355087],"end":[48.854976,2.353636]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.854996,2.353587],"end":[48.855229,2.352998]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.855258,2.352968],"end":[48.855849,2.353158]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.855876,2.353172],"end":[48.856507,2.353532]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.85656,2.353561],"end":[48.856812,2.353696]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.856859,2.353736],"end":[48.85691,2.35381]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.856976,2.353524],"end":[48.857231,2.352426]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.857254,2.352327],"end":[48.857723,2.350668]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.857875,2.350191],"end":[48.857992,2.349815]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.858016,2.349741],"end":[48.858228,2.34909]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.858458,2.348377],"end":[48.858619,2.348183]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.858665,2.348207],"end":[48.859488,2.348675]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.859523,2.348695],"end":[48.862457,2.350329]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.862475,2.350339],"end":[48.864765,2.353262]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.864772,2.353292],"end":[48.865038,2.35441]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.865057,2.354489],"end":[48.865278,2.355448]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.865286,2.355485],"end":[48.865425,2.356093]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.865441,2.356167],"end":[48.865735,2.357457]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.865758,2.357559],"end":[48.865887,2.358125]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.865923,2.358278],"end":[48.866276,2.359784]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.866638,2.361287],"end":[48.866809,2.361927]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.866843,2.362044],"end":[48.867214,2.363063]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.86724,2.363157],"end":[48.867911,2.362423]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.867949,2.362358],"end":[48.868073,2.362511]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.868294,2.362782],"end":[48.868561,2.363059]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.868611,2.36309],"end":[48.868831,2.362893]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.869102,2.362649],"end":[48.869899,2.361934]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.870527,2.361373],"end":[48.870894,2.361458]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.87144,2.36203],"end":[48.871903,2.362544]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.871959,2.362607],"end":[48.873185,2.36413]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.87471,2.3636],"end":[48.877145,2.365651]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.877242,2.365775],"end":[48.877433,2.365888]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.877532,2.365739],"end":[48.877677,2.365415]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.877769,2.365482],"end":[48.878505,2.366115]},{"ruleId":"contraflow_bike","status":"unknown","severity":"error","message":"Multiple nearby OSM roads have similarly plausible distances.","start":[48.878698,2.366238],"end":[48.878726,2.366165]}];
-  rangeSegments.forEach(function(seg) {
+  rangeSegments.forEach((seg) => {
     var color = severityColor[seg.severity] || '#555';
     L.polyline([seg.start, seg.end], {
       color: color,
       weight: 6,
       opacity: 0.6,
       dashArray: '8, 6'
-    }).addTo(map).bindPopup('<strong>' + seg.ruleId + '</strong><br>' + seg.message + '<br><em>' + seg.status.toUpperCase() + '</em>');
+    }).addTo(map).bindPopup(`<strong>${seg.ruleId}</strong><br>${seg.message}<br><em>${seg.status.toUpperCase()}</em>`);
   });
 })();
 </script>

@@ -92,7 +92,7 @@ const _DEFAULT_CONFIG: LinterConfig = {
 };
 export const DEFAULT_CONFIG: LinterConfig = deepFreeze(_DEFAULT_CONFIG);
 
-export async function loadConfig(configPath?: string): Promise<LinterConfig> {
+export async function loadConfig(configPath: string): Promise<LinterConfig> {
 	if (!configPath) return structuredClone(DEFAULT_CONFIG);
 	let contents: string;
 	try {
@@ -155,7 +155,7 @@ export async function loadConfig(configPath?: string): Promise<LinterConfig> {
 				config.rules[id].params = {
 					...config.rules[id].params,
 					geojson_file: path.resolve(
-						path.dirname(configPath!),
+						path.dirname(configPath),
 						definition.params.geojson_file,
 					),
 				};

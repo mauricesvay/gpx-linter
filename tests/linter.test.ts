@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../src/config";
-import { runLinter, type RouteResolver } from "../src/linter";
+import { type RouteResolver, runLinter } from "../src/linter";
 import type { ResolutionResult } from "../src/resolver";
-import type { Trackpoint } from "../src/types";
 
 afterEach(() => {
 	vi.unstubAllGlobals();

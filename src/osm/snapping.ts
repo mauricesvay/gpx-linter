@@ -1,6 +1,6 @@
 import {
-	distanceMeters,
 	bearingDegrees,
+	distanceMeters,
 	pointToGeometryDistanceMeters,
 } from "../geo";
 import type { MatchResult, Trackpoint } from "../types";
@@ -9,7 +9,6 @@ import {
 	GRID_CELL_DEGREES,
 	HIGHWAY_PRIORITY,
 	MAX_SNAP_DISTANCE_METERS,
-	AMBIGUITY_GAP_METERS,
 	type OsmWay,
 } from "./cache";
 
@@ -308,7 +307,7 @@ export function snapPointsToWays(
 	provider = "overpass",
 ): MatchResult[] {
 	if (ways.length === 0) {
-		return points.map((point) => ({
+		return points.map((_point) => ({
 			status: "unmatched",
 			confidence: "unknown",
 			score: 0,
@@ -323,8 +322,7 @@ export function snapPointsToWays(
 	for (let index = 0; index < points.length; index++) {
 		const point = points[index];
 		const prevResult = results.length > 0 ? results[results.length - 1] : null;
-		const prevRoadId =
-			prevResult && prevResult.roadId ? String(prevResult.roadId) : null;
+		const prevRoadId = prevResult?.roadId ? String(prevResult.roadId) : null;
 
 		const snap = snapSinglePoint(
 			point,
@@ -355,11 +353,11 @@ export function snapPointsToWays(
 				confidence: "low",
 				score: snap.topScore,
 				reason: "Multiple nearby OSM roads have similarly plausible distances.",
-				roadId: String(topCandidate!.way.id),
-				roadName: topCandidate!.way.tags.name,
-				distanceToRoad: topCandidate!.distance,
-				osmDistanceToRoad: topCandidate!.distance,
-				tags: topCandidate!.way.tags,
+				roadId: String(topCandidate?.way.id),
+				roadName: topCandidate?.way.tags.name,
+				distanceToRoad: topCandidate?.distance,
+				osmDistanceToRoad: topCandidate?.distance,
+				tags: topCandidate?.way.tags,
 				direction: snap.direction,
 				provider,
 				candidates: snap.allCandidates.slice(0, 5).map((c) => ({
@@ -376,11 +374,11 @@ export function snapPointsToWays(
 			status: confidence === "low" ? "ambiguous" : "matched",
 			confidence,
 			score: snap.topScore,
-			roadId: String(topCandidate!.way.id),
-			roadName: topCandidate!.way.tags.name,
-			distanceToRoad: topCandidate!.distance,
-			osmDistanceToRoad: topCandidate!.distance,
-			tags: topCandidate!.way.tags,
+			roadId: String(topCandidate?.way.id),
+			roadName: topCandidate?.way.tags.name,
+			distanceToRoad: topCandidate?.distance,
+			osmDistanceToRoad: topCandidate?.distance,
+			tags: topCandidate?.way.tags,
 			direction: snap.direction,
 			provider,
 		});

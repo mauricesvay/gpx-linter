@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isGeoJsonFeatureCollection, isWithinFeature } from "../src/geo";
-import { point } from "./fixtures";
 import { bboxKeyString, routeBbox } from "../src/osm/cache";
+import { point } from "./fixtures";
 
 describe("GeoJSON roadworks geometry", () => {
 	it("applies the configured buffer around line features", () => {

@@ -7,109 +7,105 @@
  * are intentionally excluded.
  */
 
-// ── Types (stable contracts) ──────────────────────────
-export type {
-	Severity,
-	ResultStatus,
-	Confidence,
-	AvailabilityStatus,
-	Trackpoint,
-	GpxSegment,
-	GpxTrack,
-	RouteMetadata,
-	ParsedGpx,
-	DataSourceAvailability,
-	DataAvailability,
-	MatchCandidate,
-	MatchResult,
-	RuleResult,
-	RuleDefinition,
-	LinterConfig,
-	CacheStats,
-	TrackCoordinate,
-	LintReport,
-	GeoJsonGeometry,
-	GeoJsonFeature,
-	GeoJsonFeatureCollection,
-	// Pipeline stage types
-	RouteInput,
-	NormalizedTrack,
-	PipelineContext,
-	RuleContext,
-	Finding,
-	LintPipelineReport,
-	// Rule-specific param interfaces
-	MaxSlopeParams,
-	SharpTurnParams,
-	RoadworksParams,
-	OffRoadParams,
-	MissingElevationParams,
-	RouteGapsParams,
-	LoopClosureParams,
-	RuleParams,
-} from "./types";
-
-// ── Config ────────────────────────────────────────────
-export { DEFAULT_CONFIG, loadConfig, applyRuleOverride } from "./config";
-
-// ── Linting pipeline ──────────────────────────────────
-export {
-	runLinter,
-	type RouteResolver,
-	type OsmEnricher,
-	type FileSystem,
-	type LintOptions,
-	type LintResult,
-} from "./linter";
-
-// ── Rule registry ──────────────────────────────────────
-export {
-	registerRule,
-	getRuleMetadata,
-	getAllRuleMetadata,
-	type RuleMetadata,
-} from "./engine";
-
 // ── CLI ───────────────────────────────────────────────
 export { createCli } from "./cli";
 
-// ── GPX parsing ───────────────────────────────────────
-export {
-	parseGpx,
-	parseGpxFile,
-	calculateElevationGain,
-	calculateMaxGradient,
-} from "./gpxParser";
-
+// ── Config ────────────────────────────────────────────
+export { applyRuleOverride, DEFAULT_CONFIG, loadConfig } from "./config";
 // ── Constants ─────────────────────────────────────────
 export {
+	AMBIGUITY_GAP_METERS,
+	BBOX_PADDING_DEGREES,
+	CACHE_FILE_NAME,
 	CLI_VERSION,
 	DEFAULT_MAX_TRACK_POINTS,
-	OVERPASS_TTL_MS,
-	OVERPASS_TIMEOUT_MS,
-	OVERPASS_PRIMARY,
-	OVERPASS_FALLBACK,
-	MAX_CHUNK_DEGREES,
-	BBOX_PADDING_DEGREES,
 	GRID_CELL_DEGREES,
-	MAX_SNAP_DISTANCE_METERS,
-	AMBIGUITY_GAP_METERS,
 	HIGHWAY_PRIORITY,
-	CACHE_FILE_NAME,
-	OSM_CACHE_FILE_NAME,
-	ROAD_CACHE_TTL_MS,
-	RATE_LIMIT_BASE_MS,
-	RATE_LIMIT_MAX_MS,
-	RATE_LIMIT_JITTER_FRACTION,
-	RATE_LIMIT_BACKOFF_MULTIPLIER,
+	MAX_CHUNK_DEGREES,
 	MAX_REQUESTS_PER_SECOND,
+	MAX_SNAP_DISTANCE_METERS,
+	OSM_CACHE_FILE_NAME,
+	OVERPASS_FALLBACK,
+	OVERPASS_PRIMARY,
+	OVERPASS_TIMEOUT_MS,
+	OVERPASS_TTL_MS,
+	RATE_LIMIT_BACKOFF_MULTIPLIER,
+	RATE_LIMIT_BASE_MS,
+	RATE_LIMIT_JITTER_FRACTION,
+	RATE_LIMIT_MAX_MS,
+	ROAD_CACHE_TTL_MS,
 } from "./constants";
 
+// ── Rule registry ──────────────────────────────────────
+export {
+	getAllRuleMetadata,
+	getRuleMetadata,
+	type RuleMetadata,
+	registerRule,
+} from "./engine";
 // ── Geo helpers ───────────────────────────────────────
 export {
-	distanceMeters,
 	bearingDegrees,
-	pointToGeometryDistanceMeters,
-	isWithinFeature,
+	distanceMeters,
 	isGeoJsonFeatureCollection,
+	isWithinFeature,
+	pointToGeometryDistanceMeters,
 } from "./geo";
+
+// ── GPX parsing ───────────────────────────────────────
+export {
+	calculateElevationGain,
+	calculateMaxGradient,
+	parseGpx,
+	parseGpxFile,
+} from "./gpxParser";
+// ── Linting pipeline ──────────────────────────────────
+export {
+	type FileSystem,
+	type LintOptions,
+	type LintResult,
+	type OsmEnricher,
+	type RouteResolver,
+	runLinter,
+} from "./linter";
+// ── Types (stable contracts) ──────────────────────────
+export type {
+	AvailabilityStatus,
+	CacheStats,
+	Confidence,
+	DataAvailability,
+	DataSourceAvailability,
+	Finding,
+	GeoJsonFeature,
+	GeoJsonFeatureCollection,
+	GeoJsonGeometry,
+	GpxSegment,
+	GpxTrack,
+	LinterConfig,
+	LintPipelineReport,
+	LintReport,
+	LoopClosureParams,
+	MatchCandidate,
+	MatchResult,
+	// Rule-specific param interfaces
+	MaxSlopeParams,
+	MissingElevationParams,
+	NormalizedTrack,
+	OffRoadParams,
+	ParsedGpx,
+	PipelineContext,
+	ResultStatus,
+	RoadworksParams,
+	RouteGapsParams,
+	// Pipeline stage types
+	RouteInput,
+	RouteMetadata,
+	RuleContext,
+	RuleDefinition,
+	RuleParams,
+	RuleResult,
+	Severity,
+	SharpTurnParams,
+	TrackCoordinate,
+	Trackpoint,
+} from "./types";

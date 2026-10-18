@@ -1,14 +1,15 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { isRecord } from "../utils";
 import {
 	CACHE_FILE_NAME,
 	DEFAULT_CACHE_DIR,
 	ROAD_CACHE_TTL_MS,
 } from "../constants";
+import { isRecord } from "../utils";
 export const CACHE_VERSION = "1";
 // Re-export for backwards compatibility.
 export { DEFAULT_CACHE_DIR };
+
 import type { MatchResult, Trackpoint } from "../types";
 
 interface CacheEntry {
@@ -17,7 +18,7 @@ interface CacheEntry {
 	result: MatchResult;
 }
 
-export { ROAD_CACHE_TTL_MS, CACHE_FILE_NAME, type CacheEntry };
+export { CACHE_FILE_NAME, type CacheEntry, ROAD_CACHE_TTL_MS };
 
 const QUANTIZE_DP = 5; // ~1 meter precision
 
@@ -46,7 +47,7 @@ export function isExpired(entry: CacheEntry, ttlMs: number): boolean {
 }
 
 export function makeCacheEntry(
-	point: Trackpoint,
+	_point: Trackpoint,
 	result: MatchResult,
 ): CacheEntry {
 	return { version: CACHE_VERSION, storedAt: Date.now(), result };
@@ -86,7 +87,7 @@ const MAX_CACHE_ENTRIES = 100_000;
 export function compactCache(
 	cache: Record<string, CacheEntry>,
 ): Record<string, CacheEntry> {
-	const now = Date.now();
+	const _now = Date.now();
 	const compacted: Record<string, CacheEntry> = {};
 	let expired = 0;
 

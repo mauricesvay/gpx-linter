@@ -12,7 +12,7 @@
 		"test": "vitest run",
 		"lint": "biome check .",
 		"format": "biome format --write .",
-		"check": "npm test && npm run build",
+		"check": "npm test && npm run build && npm run lint",
 		"prepublishOnly": "npm run check"
 	},
 	"keywords": [

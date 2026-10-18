@@ -1,15 +1,14 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Command } from "commander";
 import { loadConfig } from "./config";
-import { getAllRuleMetadata } from "./engine";
-import type { LinterConfig } from "./types";
-import { runLinter } from "./linter";
-import { errorMessage } from "./utils";
-
 import { CLI_VERSION, DEFAULT_MAX_TRACK_POINTS } from "./constants";
+import { getAllRuleMetadata } from "./engine";
+import { runLinter } from "./linter";
+import type { LinterConfig } from "./types";
+import { errorMessage } from "./utils";
 
 export function createCli(): Command {
 	const program = new Command();
@@ -31,7 +30,7 @@ export function createCli(): Command {
 			`Maximum trackpoints per file (default: ${DEFAULT_MAX_TRACK_POINTS})`,
 			(value: string) => {
 				const parsed = parseInt(value, 10);
-				if (isNaN(parsed)) {
+				if (Number.isNaN(parsed)) {
 					throw new Error(
 						`--max-points must be a valid integer, got "${value}"`,
 					);
@@ -120,7 +119,7 @@ export async function runCheck(
 		// Load and validate config
 		const userConfig = options.config
 			? await loadConfig(options.config)
-			: undefined;
+			: await loadConfig("");
 
 		// Dry-run: validate config only, skip GPX parsing
 		if (options.dryRun) {
