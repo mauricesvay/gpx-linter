@@ -1,4 +1,8 @@
-import { pointToGeometryDistanceMeters, bearingDegrees } from "../geo";
+import {
+	distanceMeters,
+	bearingDegrees,
+	pointToGeometryDistanceMeters,
+} from "../geo";
 import type { MatchResult, Trackpoint } from "../types";
 import { confidenceFromScore } from "../utils";
 import {
@@ -9,6 +13,16 @@ import {
 	type OsmWay,
 } from "./cache";
 
+/* ── precomputed segment data ────────────────────────────────────────── */
+
+interface SegmentInfo {
+	bearing: number;
+	lengthMeters: number;
+	cumulativeDistance: number;
+	fromCoord: [number, number];
+	toCoord: [number, number];
+}
+
 /* ── local snapping types ────────────────────────────────────────────── */
 
 export interface IndexedWay {
@@ -18,12 +32,15 @@ export interface IndexedWay {
 	lonMin: number;
 	latMax: number;
 	lonMax: number;
+	segments: SegmentInfo[];
+	totalLength: number;
 }
 
 export interface ScoredCandidate {
 	way: OsmWay;
 	distance: number;
 	combinedScore: number;
+	segments: SegmentInfo[];
 }
 
 /* ── grid index ──────────────────────────────────────────────────────── */
@@ -47,8 +64,34 @@ export function buildWayIndex(ways: OsmWay[]): {
 			latMax = Math.max(latMax, position.lat);
 			lonMax = Math.max(lonMax, position.lon);
 		}
+		// Precompute per-segment bearing + length once (P2-07).
+		const segments: SegmentInfo[] = [];
+		let cumulativeDistance = 0;
+		for (let i = 1; i < way.geometry.length; i++) {
+			const seg = {
+				bearing: bearingDegrees(way.geometry[i - 1], way.geometry[i]),
+				lengthMeters: distanceMeters(way.geometry[i - 1], way.geometry[i]),
+				cumulativeDistance,
+				fromCoord: [way.geometry[i - 1].lon, way.geometry[i - 1].lat] as [
+					number,
+					number,
+				],
+				toCoord: [way.geometry[i].lon, way.geometry[i].lat] as [number, number],
+			};
+			cumulativeDistance += seg.lengthMeters;
+			segments.push(seg);
+		}
 		const index = indexed.length;
-		indexed.push({ way, coordinates, latMin, lonMin, latMax, lonMax });
+		indexed.push({
+			way,
+			coordinates,
+			latMin,
+			lonMin,
+			latMax,
+			lonMax,
+			segments,
+			totalLength: cumulativeDistance,
+		});
 		const left = Math.floor(lonMin / GRID_CELL_DEGREES);
 		const right = Math.floor(lonMax / GRID_CELL_DEGREES);
 		const bottom = Math.floor(latMin / GRID_CELL_DEGREES);
@@ -70,29 +113,25 @@ export function buildWayIndex(ways: OsmWay[]): {
 function computeBearingConsistency(
 	point: Trackpoint,
 	routeBearing: number,
-	geometry: { lat: number; lon: number }[],
+	segments: SegmentInfo[],
 ): number {
-	let nearestIndex = -1;
 	let nearestDistance = Number.POSITIVE_INFINITY;
-	for (let index = 1; index < geometry.length; index++) {
+	let nearestSegIndex = -1;
+	for (let i = 0; i < segments.length; i++) {
+		const seg = segments[i];
 		const distance = pointToGeometryDistanceMeters(point, {
 			type: "LineString",
-			coordinates: [geometry[index - 1], geometry[index]].map(
-				(position) => [position.lon, position.lat] as [number, number],
-			),
+			coordinates: [seg.fromCoord, seg.toCoord],
 		});
 		if (distance < nearestDistance) {
 			nearestDistance = distance;
-			nearestIndex = index;
+			nearestSegIndex = i;
 		}
 	}
-	if (nearestIndex < 1) return 0.5;
-	const roadBearing = bearingDegrees(
-		geometry[nearestIndex - 1],
-		geometry[nearestIndex],
-	);
+	if (nearestSegIndex < 0) return 0.5;
+	const seg = segments[nearestSegIndex];
 	const angularDifference = Math.abs(
-		((routeBearing - roadBearing + 540) % 360) - 180,
+		((routeBearing - seg.bearing + 540) % 360) - 180,
 	);
 	return Math.max(0, 1 - angularDifference / 180);
 }
@@ -100,29 +139,25 @@ function computeBearingConsistency(
 function resolveDirection(
 	point: Trackpoint,
 	routeBearing: number,
-	geometry: { lat: number; lon: number }[],
+	segments: SegmentInfo[],
 ): "forward" | "backward" | "unknown" {
-	let nearestIndex = -1;
 	let nearestDistance = Number.POSITIVE_INFINITY;
-	for (let index = 1; index < geometry.length; index++) {
+	let nearestSegIndex = -1;
+	for (let i = 0; i < segments.length; i++) {
+		const seg = segments[i];
 		const distance = pointToGeometryDistanceMeters(point, {
 			type: "LineString",
-			coordinates: [geometry[index - 1], geometry[index]].map(
-				(position) => [position.lon, position.lat] as [number, number],
-			),
+			coordinates: [seg.fromCoord, seg.toCoord],
 		});
 		if (distance < nearestDistance) {
 			nearestDistance = distance;
-			nearestIndex = index;
+			nearestSegIndex = i;
 		}
 	}
-	if (nearestIndex < 1) return "unknown";
-	const roadBearing = bearingDegrees(
-		geometry[nearestIndex - 1],
-		geometry[nearestIndex],
-	);
+	if (nearestSegIndex < 0) return "unknown";
+	const seg = segments[nearestSegIndex];
 	const angularDifference = Math.abs(
-		((routeBearing - roadBearing + 540) % 360) - 180,
+		((routeBearing - seg.bearing + 540) % 360) - 180,
 	);
 	return angularDifference <= 90 ? "forward" : "backward";
 }
@@ -201,7 +236,12 @@ export function snapSinglePoint(
 			coordinates: entry.coordinates,
 		});
 		if (distance <= MAX_SNAP_DISTANCE_METERS) {
-			candidates.push({ way: entry.way, distance, combinedScore: 0 });
+			candidates.push({
+				way: entry.way,
+				distance,
+				combinedScore: 0,
+				segments: entry.segments,
+			});
 		}
 	}
 
@@ -222,7 +262,7 @@ export function snapSinglePoint(
 		const distanceScore = 1 - c.distance / MAX_SNAP_DISTANCE_METERS;
 		const bearingScore =
 			routeBearing !== undefined
-				? computeBearingConsistency(point, routeBearing, c.way.geometry)
+				? computeBearingConsistency(point, routeBearing, c.segments)
 				: 1;
 		const classScore = (HIGHWAY_PRIORITY[c.way.tags.highway] ?? 0) / 7;
 		// Spatial continuity bonus: prefer previously matched road
@@ -248,7 +288,7 @@ export function snapSinglePoint(
 	const direction =
 		routeBearing === undefined
 			? "unknown"
-			: resolveDirection(point, routeBearing, topCandidate.way.geometry);
+			: resolveDirection(point, routeBearing, topCandidate.segments);
 
 	return {
 		nearMiss: false,

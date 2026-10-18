@@ -2,7 +2,7 @@
 title: "P2-07: Snapping re-does per-way work per point"
 priority: P2
 category: "performance"
-status: open
+status: done
 created: 2026-10-17
 files:
   - src/osm/snapping.ts
