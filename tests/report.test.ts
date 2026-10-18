@@ -93,7 +93,9 @@ describe("reporting", async () => {
 
 		expect(json.summary.status.unknown).toBe(1);
 		expect(json.exitCode).toBe(2);
-		expect(await formatReport(report, "text")).toContain("roadMatching: unavailable");
+		expect(await formatReport(report, "text")).toContain(
+			"roadMatching: unavailable",
+		);
 	});
 
 	it("keeps distance markers on the full route when map lines are color-segmented", async () => {
@@ -179,8 +181,12 @@ describe("reporting", async () => {
 			expect(html).toContain("Findings: 1 markers");
 			expect(html).toContain('"message":"Test finding"');
 			expect(html).toContain("f.evidence.properties");
-			expect(html).toContain("function bindRoadworksTooltip(shape, properties)");
-			expect(html).toContain("bindRoadworksTooltip(shape, f.evidence.properties)");
+			expect(html).toContain(
+				"function bindRoadworksTooltip(shape, properties)",
+			);
+			expect(html).toContain(
+				"bindRoadworksTooltip(shape, f.evidence.properties)",
+			);
 			expect(html).not.toContain("marker.bindTooltip");
 			expect(html).toContain('"description":"Closure <east> & west"');
 			expect(html).not.toContain('"message":"Uncertain finding"');

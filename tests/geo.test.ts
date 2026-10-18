@@ -69,14 +69,8 @@ describe("GeoJSON roadworks geometry", () => {
 
 describe("bboxKeyString / routeBbox", () => {
 	it("produces different keys for bboxes with same grid origin but different sizes", () => {
-		const shortRoute = [
-			point(2.0, 48.0),
-			point(2.01, 48.01),
-		];
-		const longRoute = [
-			point(2.0, 48.0),
-			point(2.5, 48.5),
-		];
+		const shortRoute = [point(2.0, 48.0), point(2.01, 48.01)];
+		const longRoute = [point(2.0, 48.0), point(2.5, 48.5)];
 		const shortBbox = routeBbox(shortRoute);
 		const longBbox = routeBbox(longRoute);
 		expect(bboxKeyString(shortBbox)).not.toBe(bboxKeyString(longBbox));

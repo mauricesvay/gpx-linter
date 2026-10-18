@@ -50,7 +50,8 @@ import {
 
 /** Compute exponential backoff with jitter for a given attempt number. */
 function computeBackoffMs(attempt: number): number {
-	const baseMs = RATE_LIMIT_BASE_MS * Math.pow(RATE_LIMIT_BACKOFF_MULTIPLIER, attempt);
+	const baseMs =
+		RATE_LIMIT_BASE_MS * Math.pow(RATE_LIMIT_BACKOFF_MULTIPLIER, attempt);
 	const capped = Math.min(baseMs, RATE_LIMIT_MAX_MS);
 	const jitter = Math.random() * capped * RATE_LIMIT_JITTER_FRACTION;
 	return capped + jitter;
@@ -101,11 +102,14 @@ async function requestOverpass(
 			// Body unreadable; keep the status-only error.
 		}
 		lastError =
-			`HTTP ${response.status} ${response.statusText}`.trim() + responseBodyDetail(body);
+			`HTTP ${response.status} ${response.statusText}`.trim() +
+			responseBodyDetail(body);
 		const retryable = response.status === 429 || response.status >= 500;
 		if (!retryable || attempt > 0) return { text: "", error: lastError };
 		// Respect Retry-After header when present.
-		const retryAfter = retryAfterMilliseconds(response.headers.get("retry-after"));
+		const retryAfter = retryAfterMilliseconds(
+			response.headers.get("retry-after"),
+		);
 		if (retryAfter !== null) {
 			await delay(retryAfter);
 			continue;
@@ -178,7 +182,9 @@ export async function fetchOverpassBboxWays(
 			cacheError = `Unable to read OSM cache: ${errorMessage(error)}`;
 		}
 	}
-	const urls = options.url ? [options.url] : [OVERPASS_PRIMARY, OVERPASS_FALLBACK];
+	const urls = options.url
+		? [options.url]
+		: [OVERPASS_PRIMARY, OVERPASS_FALLBACK];
 	const fetcher = options.fetcher ?? fetch;
 	const chunks = chunkBbox(bbox);
 	const waysById = new Map<number, OsmWay>();
@@ -191,10 +197,7 @@ export async function fetchOverpassBboxWays(
 	for (const chunk of chunks) {
 		const key = cacheKey(chunk);
 		const cached = cacheEnabled ? entries[key] : undefined;
-		if (
-			cached &&
-			Date.now() - cached.storedAt < OVERPASS_TTL_MS
-		) {
+		if (cached && Date.now() - cached.storedAt < OVERPASS_TTL_MS) {
 			for (const way of cached.ways) waysById.set(way.id, way);
 			providedBy.add(cached.provider);
 			completedChunks.push(1);
@@ -205,10 +208,13 @@ export async function fetchOverpassBboxWays(
 		let chunkWays: OsmWay[] | null = null;
 		let supplier: string | null = null;
 		for (const url of urls) {
-			const rateLimitWait = (1 / MAX_REQUESTS_PER_SECOND) * 1000 - (Date.now() - lastRequestAt);
+			const rateLimitWait =
+				(1 / MAX_REQUESTS_PER_SECOND) * 1000 - (Date.now() - lastRequestAt);
 			if (lastRequestAt > 0 && rateLimitWait > 0) await delay(rateLimitWait);
 			lastRequestAt = Date.now();
-			console.error(`[overpass] Fetching chunk: ${chunk.latMin.toFixed(4)},${chunk.lonMin.toFixed(4)} — ${chunk.latMax.toFixed(4)},${chunk.lonMax.toFixed(4)} (${url})`);
+			console.error(
+				`[overpass] Fetching chunk: ${chunk.latMin.toFixed(4)},${chunk.lonMin.toFixed(4)} — ${chunk.latMax.toFixed(4)},${chunk.lonMax.toFixed(4)} (${url})`,
+			);
 			const response = await requestOverpass(url, bboxQuery(chunk), fetcher);
 			lastRequestAt = Date.now();
 			if (response.error) {

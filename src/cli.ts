@@ -26,13 +26,19 @@ export function createCli(): Command {
 		.argument("<file...>", "GPX file(s) to check")
 		.option("-c, --config <file>", "YAML configuration file")
 		.option("--dry-run", "Validate config only, skip GPX parsing")
-		.option("--max-points <n>", `Maximum trackpoints per file (default: ${DEFAULT_MAX_TRACK_POINTS})`, (value: string) => {
-			const parsed = parseInt(value, 10);
-			if (isNaN(parsed)) {
-				throw new Error(`--max-points must be a valid integer, got "${value}"`);
-			}
-			return parsed;
-		})
+		.option(
+			"--max-points <n>",
+			`Maximum trackpoints per file (default: ${DEFAULT_MAX_TRACK_POINTS})`,
+			(value: string) => {
+				const parsed = parseInt(value, 10);
+				if (isNaN(parsed)) {
+					throw new Error(
+						`--max-points must be a valid integer, got "${value}"`,
+					);
+				}
+				return parsed;
+			},
+		)
 		.option("--rule <id>", "Rule to enable or disable")
 		.option("--enable", "Enable the selected rule")
 		.option("--disable", "Disable the selected rule")
@@ -104,7 +110,9 @@ export async function runCheck(
 	options: CheckOptions = {},
 ): Promise<0 | 1 | 2 | 3> {
 	if (files.length === 0) {
-		console.error("gpxlint: no files specified. Usage: gpxlint check <file...>");
+		console.error(
+			"gpxlint: no files specified. Usage: gpxlint check <file...>",
+		);
 		return 3;
 	}
 
@@ -118,9 +126,14 @@ export async function runCheck(
 		if (options.dryRun) {
 			if (userConfig) {
 				const ruleList = Object.entries(userConfig.rules)
-					.map(([id, def]) => `  ${id}: ${def.enabled ? "enabled" : "disabled"} (${def.severity ?? "info"})`)
+					.map(
+						([id, def]) =>
+							`  ${id}: ${def.enabled ? "enabled" : "disabled"} (${def.severity ?? "info"})`,
+					)
 					.join("\n");
-				console.log(`Config valid. Rules (${Object.keys(userConfig.rules).length}):`);
+				console.log(
+					`Config valid. Rules (${Object.keys(userConfig.rules).length}):`,
+				);
 				console.log(ruleList);
 			} else {
 				console.log("Config valid (defaults).");
@@ -151,9 +164,9 @@ export async function runCheck(
 
 		// Print summary for multi-file
 		if (allResults.length > 1) {
-			const summary = allResults.map(
-				(r) => `  ${r.file}: exit ${r.exitCode}`,
-			).join("\n");
+			const summary = allResults
+				.map((r) => `  ${r.file}: exit ${r.exitCode}`)
+				.join("\n");
 			console.error(`\nMulti-file summary:\n${summary}`);
 		}
 
@@ -189,8 +202,6 @@ async function runSingleFile(
 		return { file: file, exitCode: 3 };
 	}
 }
-
-
 
 if (require.main === module) {
 	createCli()

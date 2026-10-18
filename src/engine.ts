@@ -40,11 +40,14 @@ export interface RuleMetadata {
 
 const registry: Record<string, RuleMetadata> = {};
 
-const handlers: Record<string, (
-	def: RuleDefinition,
-	pts: Trackpoint[],
-	ctx?: RuleContext,
-) => RuleResult[] | Promise<RuleResult[]>> = {};
+const handlers: Record<
+	string,
+	(
+		def: RuleDefinition,
+		pts: Trackpoint[],
+		ctx?: RuleContext,
+	) => RuleResult[] | Promise<RuleResult[]>
+> = {};
 
 // ── Public API ───────────────────────────────────────────
 
@@ -87,85 +90,134 @@ export function getAllRuleMetadata(): Record<string, RuleMetadata> {
 
 // ── Built-in rules ───────────────────────────────────────
 
-registerRule("max_slope", {
-	defaultSeverity: "error",
-	requiresRoads: false,
-	enabledByDefault: true,
-	description: "Checks for excessive road gradient/slope.",
-	params: { max_slope_percentage: 10, min_segment_meters: 3, min_elevation_delta_meters: 1.5 },
-}, (def, pts) => maxSlope(def, pts));
+registerRule(
+	"max_slope",
+	{
+		defaultSeverity: "error",
+		requiresRoads: false,
+		enabledByDefault: true,
+		description: "Checks for excessive road gradient/slope.",
+		params: {
+			max_slope_percentage: 10,
+			min_segment_meters: 3,
+			min_elevation_delta_meters: 1.5,
+		},
+	},
+	(def, pts) => maxSlope(def, pts),
+);
 
-registerRule("contraflow_bike", {
-	defaultSeverity: "error",
-	requiresRoads: true,
-	enabledByDefault: true,
-	description: "Checks for cycling against one-way traffic flow.",
-}, (def, pts, ctx) => evaluateContraflowBike(def, pts, ctx ?? {}));
+registerRule(
+	"contraflow_bike",
+	{
+		defaultSeverity: "error",
+		requiresRoads: true,
+		enabledByDefault: true,
+		description: "Checks for cycling against one-way traffic flow.",
+	},
+	(def, pts, ctx) => evaluateContraflowBike(def, pts, ctx ?? {}),
+);
 
-registerRule("roadworks", {
-	defaultSeverity: "warning",
-	requiresRoads: false,
-	enabledByDefault: false,
-	description: "Checks for proximity to roadworks/construction zones.",
-	params: { buffer_meters: 1, geojson_file: "" },
-}, (def, pts) => roadworks(def, pts));
+registerRule(
+	"roadworks",
+	{
+		defaultSeverity: "warning",
+		requiresRoads: false,
+		enabledByDefault: false,
+		description: "Checks for proximity to roadworks/construction zones.",
+		params: { buffer_meters: 1, geojson_file: "" },
+	},
+	(def, pts) => roadworks(def, pts),
+);
 
-registerRule("sharp_turn", {
-	defaultSeverity: "warning",
-	requiresRoads: false,
-	enabledByDefault: false,
-	description: "Checks for sharp turns that may indicate navigation errors.",
-	params: { max_angle: 60, min_segment_meters: 5, min_heading_change_degrees: 0 },
-}, (def, pts) => sharpTurns(def, pts));
+registerRule(
+	"sharp_turn",
+	{
+		defaultSeverity: "warning",
+		requiresRoads: false,
+		enabledByDefault: false,
+		description: "Checks for sharp turns that may indicate navigation errors.",
+		params: {
+			max_angle: 60,
+			min_segment_meters: 5,
+			min_heading_change_degrees: 0,
+		},
+	},
+	(def, pts) => sharpTurns(def, pts),
+);
 
-registerRule("off_road", {
-	defaultSeverity: "error",
-	requiresRoads: true,
-	enabledByDefault: false,
-	description: "Checks for sections of the route that are off-road.",
-	params: { max_distance_meters: 50 },
-}, (def, pts, ctx) => evaluateOffRoad(def, pts, ctx ?? {}));
+registerRule(
+	"off_road",
+	{
+		defaultSeverity: "error",
+		requiresRoads: true,
+		enabledByDefault: false,
+		description: "Checks for sections of the route that are off-road.",
+		params: { max_distance_meters: 50 },
+	},
+	(def, pts, ctx) => evaluateOffRoad(def, pts, ctx ?? {}),
+);
 
-registerRule("missing_elevation", {
-	defaultSeverity: "info",
-	requiresRoads: false,
-	enabledByDefault: true,
-	description: "Reports trackpoints missing elevation data.",
-	params: { max_missing_elevation_percentage: 50 },
-}, (def, pts) => missingElevation(def, pts));
+registerRule(
+	"missing_elevation",
+	{
+		defaultSeverity: "info",
+		requiresRoads: false,
+		enabledByDefault: true,
+		description: "Reports trackpoints missing elevation data.",
+		params: { max_missing_elevation_percentage: 50 },
+	},
+	(def, pts) => missingElevation(def, pts),
+);
 
-registerRule("route_gaps", {
-	defaultSeverity: "info",
-	requiresRoads: false,
-	enabledByDefault: false,
-	description: "Detects large gaps between consecutive trackpoints.",
-	params: { max_gap_meters: 500 },
-}, (def, pts, ctx) => routeGaps(def, pts, ctx ?? {}));
+registerRule(
+	"route_gaps",
+	{
+		defaultSeverity: "info",
+		requiresRoads: false,
+		enabledByDefault: false,
+		description: "Detects large gaps between consecutive trackpoints.",
+		params: { max_gap_meters: 500 },
+	},
+	(def, pts, ctx) => routeGaps(def, pts, ctx ?? {}),
+);
 
-registerRule("loop_closure", {
-	defaultSeverity: "info",
-	requiresRoads: false,
-	enabledByDefault: false,
-	description: "Checks whether the route returns near its starting point.",
-	params: { max_return_distance_meters: 100 },
-}, (def, pts, ctx) => loopClosure(def, pts, ctx ?? {}));
+registerRule(
+	"loop_closure",
+	{
+		defaultSeverity: "info",
+		requiresRoads: false,
+		enabledByDefault: false,
+		description: "Checks whether the route returns near its starting point.",
+		params: { max_return_distance_meters: 100 },
+	},
+	(def, pts, ctx) => loopClosure(def, pts, ctx ?? {}),
+);
 
-registerRule("bike_lane_no_same_direction_car_lane", {
-	defaultSeverity: "warning",
-	requiresRoads: true,
-	enabledByDefault: false,
-	description: "Checks for dedicated cycling facilities without a nearby same-direction car road.",
-	params: { max_distance_meters: 30 },
-}, (def, pts, ctx) => evaluateBikeLaneNoSameDirectionCarLane(def, pts, ctx ?? {}));
+registerRule(
+	"bike_lane_no_same_direction_car_lane",
+	{
+		defaultSeverity: "warning",
+		requiresRoads: true,
+		enabledByDefault: false,
+		description:
+			"Checks for dedicated cycling facilities without a nearby same-direction car road.",
+		params: { max_distance_meters: 30 },
+	},
+	(def, pts, ctx) =>
+		evaluateBikeLaneNoSameDirectionCarLane(def, pts, ctx ?? {}),
+);
 
 // ── Evaluation ───────────────────────────────────────────
 
 /** Compile-time-safe record of all built-in rule IDs → handlers. */
-export const BUILTIN_RULES: Record<string, (
-	def: RuleDefinition,
-	pts: Trackpoint[],
-	ctx?: RuleContext,
-) => RuleResult[] | Promise<RuleResult[]>> = { ...handlers };
+export const BUILTIN_RULES: Record<
+	string,
+	(
+		def: RuleDefinition,
+		pts: Trackpoint[],
+		ctx?: RuleContext,
+	) => RuleResult[] | Promise<RuleResult[]>
+> = { ...handlers };
 
 export async function evaluateRules(
 	points: Trackpoint[],

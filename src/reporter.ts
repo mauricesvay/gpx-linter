@@ -86,7 +86,10 @@ export function createReport(input: {
 	matchedRoadIds?: (string | null)[];
 	matchedHighway?: (string | null)[];
 	matchedStatus?: (string | null)[];
-	routeStats?: Pick<RouteMetadata, "totalDistance" | "totalElevationGain" | "maxGradient">;
+	routeStats?: Pick<
+		RouteMetadata,
+		"totalDistance" | "totalElevationGain" | "maxGradient"
+	>;
 	enabledRules?: Set<string>;
 }): LintReport {
 	const availability: DataAvailability = {
@@ -104,7 +107,12 @@ export function createReport(input: {
 	for (const item of input.results) {
 		summary.status[item.status]++;
 		if (item.status === "fail") summary.severity[item.severity]++;
-		const rule = rules[item.ruleId] ?? { failures: 0, unknown: 0, skipped: 0, enabled: false };
+		const rule = rules[item.ruleId] ?? {
+			failures: 0,
+			unknown: 0,
+			skipped: 0,
+			enabled: false,
+		};
 		if (item.status === "fail") rule.failures++;
 		if (item.status === "unknown") rule.unknown++;
 		if (item.status === "skipped") rule.skipped++;
@@ -193,15 +201,20 @@ function formatText(
 			let position = "";
 			if (item.startIndex !== undefined && trackCoords[item.startIndex]) {
 				const distStart = km(trackCoords[item.startIndex].distanceFromStart);
-				const distEnd = item.endIndex !== item.startIndex && trackCoords[item.endIndex]
-					? km(trackCoords[item.endIndex].distanceFromStart)
-					: null;
+				const distEnd =
+					item.endIndex !== item.startIndex && trackCoords[item.endIndex]
+						? km(trackCoords[item.endIndex].distanceFromStart)
+						: null;
 				position = distEnd
 					? ` [${distStart}–${distEnd} km]`
 					: ` [${distStart} km]`;
 			} else if (item.startLat !== undefined && item.startLon !== undefined) {
 				position = ` [${item.startLat.toFixed(6)}, ${item.startLon.toFixed(6)}]`;
-				if (item.endLat !== undefined && item.endLon !== undefined && item.endIndex !== item.startIndex) {
+				if (
+					item.endLat !== undefined &&
+					item.endLon !== undefined &&
+					item.endIndex !== item.startIndex
+				) {
 					position += `–[${item.endLat.toFixed(6)}, ${item.endLon.toFixed(6)}]`;
 				}
 			}

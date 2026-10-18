@@ -28,9 +28,10 @@ export interface ScoredCandidate {
 
 /* ── grid index ──────────────────────────────────────────────────────── */
 
-export function buildWayIndex(
-	ways: OsmWay[],
-): { cells: Map<string, number[]>; indexed: IndexedWay[] } {
+export function buildWayIndex(ways: OsmWay[]): {
+	cells: Map<string, number[]>;
+	indexed: IndexedWay[];
+} {
 	const cells = new Map<string, number[]>();
 	const indexed: IndexedWay[] = [];
 	for (const way of ways) {
@@ -137,8 +138,7 @@ function getRouteBearing(
 				? points[index - 1]
 				: undefined;
 	if (!nextPoint) return undefined;
-	const forward =
-		index + 1 < points.length && nextPoint === points[index + 1];
+	const forward = index + 1 < points.length && nextPoint === points[index + 1];
 	return bearingDegrees(
 		forward ? points[index] : nextPoint,
 		forward ? nextPoint : points[index],
@@ -206,23 +206,35 @@ export function snapSinglePoint(
 	}
 
 	if (candidates.length === 0) {
-		return { nearMiss: true, ambiguous: false, topScore: 0, topCandidate: null, allCandidates: [], direction: "unknown" };
+		return {
+			nearMiss: true,
+			ambiguous: false,
+			topScore: 0,
+			topCandidate: null,
+			allCandidates: [],
+			direction: "unknown",
+		};
 	}
 
 	// Score candidates: distance 50%, bearing 30%, road class 20%
 	const routeBearing = getRouteBearing(points, index);
 	for (const c of candidates) {
 		const distanceScore = 1 - c.distance / MAX_SNAP_DISTANCE_METERS;
-		const bearingScore = routeBearing !== undefined
-			? computeBearingConsistency(point, routeBearing, c.way.geometry)
-			: 1;
+		const bearingScore =
+			routeBearing !== undefined
+				? computeBearingConsistency(point, routeBearing, c.way.geometry)
+				: 1;
 		const classScore = (HIGHWAY_PRIORITY[c.way.tags.highway] ?? 0) / 7;
 		// Spatial continuity bonus: prefer previously matched road
 		let continuityBonus = 0;
 		if (prevRoadId && c.way.id.toString() === prevRoadId) {
 			continuityBonus = 0.2;
 		}
-		c.combinedScore = distanceScore * 0.5 + bearingScore * 0.3 + classScore * 0.2 + continuityBonus;
+		c.combinedScore =
+			distanceScore * 0.5 +
+			bearingScore * 0.3 +
+			classScore * 0.2 +
+			continuityBonus;
 	}
 	candidates.sort((a, b) => b.combinedScore - a.combinedScore);
 	const topCandidate = candidates[0];
@@ -238,7 +250,14 @@ export function snapSinglePoint(
 			? "unknown"
 			: resolveDirection(point, routeBearing, topCandidate.way.geometry);
 
-	return { nearMiss: false, ambiguous, topScore: score, topCandidate, allCandidates: candidates, direction };
+	return {
+		nearMiss: false,
+		ambiguous,
+		topScore: score,
+		topCandidate,
+		allCandidates: candidates,
+		direction,
+	};
 }
 
 /* ── public: snap all points ─────────────────────────────────────────── */
@@ -264,9 +283,17 @@ export function snapPointsToWays(
 	for (let index = 0; index < points.length; index++) {
 		const point = points[index];
 		const prevResult = results.length > 0 ? results[results.length - 1] : null;
-		const prevRoadId = prevResult && prevResult.roadId ? String(prevResult.roadId) : null;
+		const prevRoadId =
+			prevResult && prevResult.roadId ? String(prevResult.roadId) : null;
 
-		const snap = snapSinglePoint(point, index, points, cells, indexed, prevRoadId);
+		const snap = snapSinglePoint(
+			point,
+			index,
+			points,
+			cells,
+			indexed,
+			prevRoadId,
+		);
 
 		if (snap.nearMiss) {
 			results.push({

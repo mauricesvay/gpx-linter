@@ -98,4 +98,6 @@ export type RuleDefinitionInput = z.infer<typeof ruleDefinitionSchema>;
 export type RoutingConfigInput = z.infer<typeof routingConfigSchema>;
 export type ReportingConfigInput = z.infer<typeof reportingConfigSchema>;
 export type RouteContextInput = z.infer<typeof routeContextSchema>;
-export type BikeLaneNoSameDirectionCarLaneParamsInput = z.infer<typeof bikeLaneNoSameDirectionCarLaneParamsSchema>;
+export type BikeLaneNoSameDirectionCarLaneParamsInput = z.infer<
+	typeof bikeLaneNoSameDirectionCarLaneParamsSchema
+>;

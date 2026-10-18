@@ -1,11 +1,7 @@
 import { z } from "zod";
 
 import { distanceMeters } from "../geo";
-import type {
-	RuleDefinition,
-	RuleResult,
-	Trackpoint,
-} from "../types";
+import type { RuleDefinition, RuleResult, Trackpoint } from "../types";
 import { numberParam, result, sameSegment, smoothElevations } from "./utils";
 
 /** Zod schema for max_slope rule parameters. */

@@ -20,7 +20,11 @@ function deepFreeze<T>(obj: T): T {
 	Object.freeze(obj);
 	for (const key of Object.keys(obj)) {
 		const value = (obj as Record<string, unknown>)[key];
-		if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+		if (
+			value !== null &&
+			typeof value === "object" &&
+			!Object.isFrozen(value)
+		) {
 			deepFreeze(value);
 		}
 	}
@@ -151,7 +155,7 @@ export async function loadConfig(configPath?: string): Promise<LinterConfig> {
 				config.rules[id].params = {
 					...config.rules[id].params,
 					geojson_file: path.resolve(
-					path.dirname(configPath!),
+						path.dirname(configPath!),
 						definition.params.geojson_file,
 					),
 				};

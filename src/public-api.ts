@@ -53,16 +53,33 @@ export type {
 export { DEFAULT_CONFIG, loadConfig, applyRuleOverride } from "./config";
 
 // ── Linting pipeline ──────────────────────────────────
-export { runLinter, type RouteResolver, type OsmEnricher, type FileSystem, type LintOptions, type LintResult } from "./linter";
+export {
+	runLinter,
+	type RouteResolver,
+	type OsmEnricher,
+	type FileSystem,
+	type LintOptions,
+	type LintResult,
+} from "./linter";
 
 // ── Rule registry ──────────────────────────────────────
-export { registerRule, getRuleMetadata, getAllRuleMetadata, type RuleMetadata } from "./engine";
+export {
+	registerRule,
+	getRuleMetadata,
+	getAllRuleMetadata,
+	type RuleMetadata,
+} from "./engine";
 
 // ── CLI ───────────────────────────────────────────────
 export { createCli } from "./cli";
 
 // ── GPX parsing ───────────────────────────────────────
-export { parseGpx, parseGpxFile, calculateElevationGain, calculateMaxGradient } from "./gpxParser";
+export {
+	parseGpx,
+	parseGpxFile,
+	calculateElevationGain,
+	calculateMaxGradient,
+} from "./gpxParser";
 
 // ── Constants ─────────────────────────────────────────
 export {

@@ -1,11 +1,7 @@
 import { z } from "zod";
 
 import { bearingDegrees, distanceMeters } from "../geo";
-import type {
-	RuleDefinition,
-	RuleResult,
-	Trackpoint,
-} from "../types";
+import type { RuleDefinition, RuleResult, Trackpoint } from "../types";
 import { numberParam, result, sameSegment } from "./utils";
 
 /** Zod schema for sharp_turns rule parameters. */

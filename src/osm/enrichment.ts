@@ -1,10 +1,6 @@
 import { fetchOverpassBboxWays } from "./fetch";
 import { snapSinglePoint, buildWayIndex, type IndexedWay } from "./snapping";
-import type {
-	DataSourceAvailability,
-	MatchResult,
-	Trackpoint,
-} from "../types";
+import type { DataSourceAvailability, MatchResult, Trackpoint } from "../types";
 import {
 	MAX_SNAP_DISTANCE_METERS,
 	OVERPASS_TTL_MS,
@@ -39,17 +35,24 @@ function enrichMatches(
 		}
 		const point = points[index];
 		const prevResult = results.length > 0 ? results[results.length - 1] : null;
-		const prevRoadId = prevResult && prevResult.roadId ? String(prevResult.roadId) : null;
+		const prevRoadId =
+			prevResult && prevResult.roadId ? String(prevResult.roadId) : null;
 
-		const snap = snapSinglePoint(point, index, points, cells, indexed, prevRoadId);
+		const snap = snapSinglePoint(
+			point,
+			index,
+			points,
+			cells,
+			indexed,
+			prevRoadId,
+		);
 
 		if (snap.nearMiss) {
 			results.push({
 				...match,
 				status: "unmatched",
 				confidence: "unknown",
-				reason:
-					`No OSM road geometry was found within ${MAX_SNAP_DISTANCE_METERS}m of the matched point.`,
+				reason: `No OSM road geometry was found within ${MAX_SNAP_DISTANCE_METERS}m of the matched point.`,
 				candidates: [],
 			});
 			continue;
@@ -84,8 +87,6 @@ function enrichMatches(
 	}
 	return results;
 }
-
-
 
 /* ── public: enrich with OSM data ────────────────────────────────────── */
 

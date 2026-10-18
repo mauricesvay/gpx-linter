@@ -208,8 +208,7 @@ export async function runLinter(options: LintOptions): Promise<LintResult> {
 	);
 	if (matching.availability.message)
 		console.error(`[overpass]   ${matching.availability.message}`);
-	if (matching.cacheError)
-		console.error(`[overpass]   ${matching.cacheError}`);
+	if (matching.cacheError) console.error(`[overpass]   ${matching.cacheError}`);
 	for (const providerError of matching.providerErrors)
 		console.error(
 			`[overpass]   Routing provider unavailable: ${providerError}`,
@@ -259,12 +258,8 @@ export async function runLinter(options: LintOptions): Promise<LintResult> {
 	const routeOsmWays =
 		osm?.osmWays ?? (inlineOsm && matching ? matching.osmWays : undefined);
 	const matchedRoadIds = routeMatches?.map((m) => m?.roadId ?? null);
-	const matchedHighway = routeMatches?.map(
-		(m) => m?.tags?.highway ?? null,
-	);
-	const matchedStatus = routeMatches?.map(
-		(m) => m?.status ?? null,
-	);
+	const matchedHighway = routeMatches?.map((m) => m?.tags?.highway ?? null);
+	const matchedStatus = routeMatches?.map((m) => m?.status ?? null);
 
 	const results = await evaluateRules(parsed.points, {
 		rules: config.rules,
@@ -328,18 +323,17 @@ export async function runLinter(options: LintOptions): Promise<LintResult> {
 			requestedItems: parsed.points.length,
 			availableItems: 0,
 		},
-		osm:
-			inlineOsm
-				? (osm?.availability ??
-					matching?.osmWaysAvailability ??
-					matching?.availability ?? {
-						status: "unavailable",
-						source: config.routing?.overpass_url ?? "overpass",
-						requestedItems: parsed.points.length,
-						availableItems: 0,
-						message: "OSM enrichment was not run (inline overpass).",
-					})
-				: (osm?.availability ?? notRequired("overpass")),
+		osm: inlineOsm
+			? (osm?.availability ??
+				matching?.osmWaysAvailability ??
+				matching?.availability ?? {
+					status: "unavailable",
+					source: config.routing?.overpass_url ?? "overpass",
+					requestedItems: parsed.points.length,
+					availableItems: 0,
+					message: "OSM enrichment was not run (inline overpass).",
+				})
+			: (osm?.availability ?? notRequired("overpass")),
 		roadworks: roadworksAvailability,
 		incomplete: false,
 	};

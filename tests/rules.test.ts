@@ -163,30 +163,27 @@ describe("v1 rules", async () => {
 			{ oneway: "yes", "oneway:bicycle": "no" },
 			{ oneway: "yes", bicycle: "designated" },
 		]) {
-			const results = await evaluateRules(
-				[point(48, 2), point(48, 2.0001)],
-				{
-					rules: { contraflow_bike: { enabled: true } },
-					matches: [
-						{
-							status: "matched",
-							confidence: "high",
-							score: 0.95,
-							roadId: "123",
-							tags,
-							direction: "backward",
-						},
-						{
-							status: "matched",
-							confidence: "high",
-							score: 0.95,
-							roadId: "123",
-							tags,
-							direction: "backward",
-						},
-					],
-				},
-			);
+			const results = await evaluateRules([point(48, 2), point(48, 2.0001)], {
+				rules: { contraflow_bike: { enabled: true } },
+				matches: [
+					{
+						status: "matched",
+						confidence: "high",
+						score: 0.95,
+						roadId: "123",
+						tags,
+						direction: "backward",
+					},
+					{
+						status: "matched",
+						confidence: "high",
+						score: 0.95,
+						roadId: "123",
+						tags,
+						direction: "backward",
+					},
+				],
+			});
 			expect(
 				results.find((result) => result.ruleId === "contraflow_bike")?.status,
 			).toBe("pass");
@@ -850,11 +847,7 @@ describe("v1 rules", async () => {
 			makePoints(3),
 			context({
 				matches: ambiguousMatches,
-				osmWays: [
-					makeOsmWay(100, "cycleway"),
-					distantFootway,
-					companionWay,
-				],
+				osmWays: [makeOsmWay(100, "cycleway"), distantFootway, companionWay],
 			}),
 		);
 		expect(

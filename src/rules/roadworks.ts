@@ -25,9 +25,7 @@ export const roadworksParamsSchema = z.object({
 export type RoadworksParamsInput = z.infer<typeof roadworksParamsSchema>;
 
 /** Convert GeoJSON coordinates [lon, lat] to Leaflet format [lat, lon]. */
-function geoJsonToLeafletCoords(
-	geometry: GeoJsonGeometry | null,
-): {
+function geoJsonToLeafletCoords(geometry: GeoJsonGeometry | null): {
 	type: string;
 	coordinates: unknown;
 } | null {
@@ -87,7 +85,10 @@ export async function roadworks(
 			}
 			geoJson = parsed;
 		} catch (error) {
-			if (error instanceof Error && error.message.includes("not a valid FeatureCollection")) {
+			if (
+				error instanceof Error &&
+				error.message.includes("not a valid FeatureCollection")
+			) {
 				throw error;
 			}
 			throw new Error(
@@ -99,7 +100,7 @@ export async function roadworks(
 	if (!isFeatureCollection(geoJson)) {
 		throw new Error(
 			"Roadworks rule is enabled but no valid GeoJSON data is available. " +
-			"Provide a valid GeoJSON FeatureCollection via `geojson_file` in config or `data` in rule definition.",
+				"Provide a valid GeoJSON FeatureCollection via `geojson_file` in config or `data` in rule definition.",
 		);
 	}
 	const buffer = numberParam(definition, "buffer_meters", 1);

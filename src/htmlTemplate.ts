@@ -79,7 +79,7 @@ function groupContiguousResults(
 				startLon: r.lon,
 				endLat: r.lat,
 				endLon: r.lon,
-		};
+			};
 		} else {
 			current.endIndex = idx;
 			current.endLat = r.lat;
@@ -178,7 +178,10 @@ export interface HtmlContext {
 	warningCount: string;
 	infoCount: string;
 	exitCode: string;
-	routeStats?: Pick<RouteMetadata, "totalDistance" | "totalElevationGain" | "maxGradient">;
+	routeStats?: Pick<
+		RouteMetadata,
+		"totalDistance" | "totalElevationGain" | "maxGradient"
+	>;
 	distance?: string;
 	elevGain?: string;
 	maxGrad?: string;
@@ -273,8 +276,7 @@ export async function formatHtml(report: LintReport): Promise<string> {
 
 	// Map report
 	const { js, css } = await getPlugins();
-	const pluginsHtml =
-		`<link rel="stylesheet" href="${LEAFLET_CSS_URL}" />\n<script src="${LEAFLET_URL}"></script>\n${js}\n<script src="${PMTILES_URL}"></script>\n${css}`;
+	const pluginsHtml = `<link rel="stylesheet" href="${LEAFLET_CSS_URL}" />\n<script src="${LEAFLET_URL}"></script>\n${js}\n<script src="${PMTILES_URL}"></script>\n${css}`;
 
 	// Escape JSON for embedding in <script> blocks
 	const escapeJson = (val: unknown) =>
@@ -301,7 +303,8 @@ export async function formatHtml(report: LintReport): Promise<string> {
 				return {
 					lat: f.lat!,
 					lon: f.lon!,
-					distanceFromStart: idx >= 0 ? trackCoords[idx].distanceFromStart : null,
+					distanceFromStart:
+						idx >= 0 ? trackCoords[idx].distanceFromStart : null,
 					ruleId: f.ruleId,
 					status: f.status,
 					severity: f.severity,

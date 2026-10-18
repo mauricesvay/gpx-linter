@@ -129,21 +129,19 @@ export function chunkBbox(bbox: OsmBbox): OsmBbox[] {
 	const cols = Math.max(1, Math.ceil(lonSpan / MAX_CHUNK_DEGREES));
 	for (let row = 0; row < rows; row++) {
 		for (let col = 0; col < cols; col++) {
-			const latMin = Math.max(
-				-90,
-				bbox.latMin + (row * latSpan) / rows,
-			);
+			const latMin = Math.max(-90, bbox.latMin + (row * latSpan) / rows);
 			const latMax = Math.min(
 				90,
-				row === rows - 1 ? bbox.latMax : bbox.latMin + ((row + 1) * latSpan) / rows,
+				row === rows - 1
+					? bbox.latMax
+					: bbox.latMin + ((row + 1) * latSpan) / rows,
 			);
-			const lonMin = Math.max(
-				-180,
-				bbox.lonMin + (col * lonSpan) / cols,
-			);
+			const lonMin = Math.max(-180, bbox.lonMin + (col * lonSpan) / cols);
 			const lonMax = Math.min(
 				180,
-				col === cols - 1 ? bbox.lonMax : bbox.lonMin + ((col + 1) * lonSpan) / cols,
+				col === cols - 1
+					? bbox.lonMax
+					: bbox.lonMin + ((col + 1) * lonSpan) / cols,
 			);
 			chunks.push({ latMin, lonMin, latMax, lonMax });
 		}

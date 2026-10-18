@@ -96,7 +96,10 @@ function evaluateOffRoadPoints(
 			continue;
 		}
 
-		if (match.distanceToRoad === undefined || !Number.isFinite(match.distanceToRoad)) {
+		if (
+			match.distanceToRoad === undefined ||
+			!Number.isFinite(match.distanceToRoad)
+		) {
 			uncertainties.push(
 				result(
 					"off_road",

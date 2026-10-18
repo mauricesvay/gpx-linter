@@ -12,7 +12,11 @@
  * import from this module.
  */
 
-import { bearingDegrees, distanceMeters, pointToGeometryDistanceMeters } from "../geo";
+import {
+	bearingDegrees,
+	distanceMeters,
+	pointToGeometryDistanceMeters,
+} from "../geo";
 import type { OsmWay } from "../osm";
 import type {
 	AvailabilityStatus,
@@ -196,30 +200,54 @@ export function classifyFacility(
 	const cyclewayRight = (tags["cycleway:right"] ?? "").toLowerCase();
 
 	// Explicitly excluded access/bicycle tags on cycleways
-	if (access === "no" || bicycle === "no") return { isCyclingFacility: false, isCyclewayOnMotorRoad: false };
+	if (access === "no" || bicycle === "no")
+		return { isCyclingFacility: false, isCyclewayOnMotorRoad: false };
 
 	// Standalone cycling facility
-	if (highway === "cycleway") return { isCyclingFacility: true, isCyclewayOnMotorRoad: false };
-	if (highway === "path" && bicycle === "designated") return { isCyclingFacility: true, isCyclewayOnMotorRoad: false };
+	if (highway === "cycleway")
+		return { isCyclingFacility: true, isCyclewayOnMotorRoad: false };
+	if (highway === "path" && bicycle === "designated")
+		return { isCyclingFacility: true, isCyclewayOnMotorRoad: false };
 
 	// Cycleway tag on a motor road (cycleway=lane/track/etc. on the way itself)
 	if (
 		isCarRoad(highway, tags) &&
-		(cycleway === "lane" || cycleway === "track" || cycleway === "opposite_lane" || cycleway === "opposite_track")
+		(cycleway === "lane" ||
+			cycleway === "track" ||
+			cycleway === "opposite_lane" ||
+			cycleway === "opposite_track")
 	) {
-		return { isCyclingFacility: true, isCyclewayOnMotorRoad: true, motorRoadTags: tags };
+		return {
+			isCyclingFacility: true,
+			isCyclewayOnMotorRoad: true,
+			motorRoadTags: tags,
+		};
 	}
 	if (
 		isCarRoad(highway, tags) &&
-		(cyclewayLeft === "lane" || cyclewayLeft === "track" || cyclewayLeft === "opposite_lane" || cyclewayLeft === "opposite_track")
+		(cyclewayLeft === "lane" ||
+			cyclewayLeft === "track" ||
+			cyclewayLeft === "opposite_lane" ||
+			cyclewayLeft === "opposite_track")
 	) {
-		return { isCyclingFacility: true, isCyclewayOnMotorRoad: true, motorRoadTags: tags };
+		return {
+			isCyclingFacility: true,
+			isCyclewayOnMotorRoad: true,
+			motorRoadTags: tags,
+		};
 	}
 	if (
 		isCarRoad(highway, tags) &&
-		(cyclewayRight === "lane" || cyclewayRight === "track" || cyclewayRight === "opposite_lane" || cyclewayRight === "opposite_track")
+		(cyclewayRight === "lane" ||
+			cyclewayRight === "track" ||
+			cyclewayRight === "opposite_lane" ||
+			cyclewayRight === "opposite_track")
 	) {
-		return { isCyclingFacility: true, isCyclewayOnMotorRoad: true, motorRoadTags: tags };
+		return {
+			isCyclingFacility: true,
+			isCyclewayOnMotorRoad: true,
+			motorRoadTags: tags,
+		};
 	}
 
 	return { isCyclingFacility: false, isCyclewayOnMotorRoad: false };
@@ -266,7 +294,10 @@ export function roadServesDirection(
 
 			const distance = pointToGeometryDistanceMeters(point, {
 				type: "LineString",
-				coordinates: [[start.lon, start.lat], [end.lon, end.lat]],
+				coordinates: [
+					[start.lon, start.lat],
+					[end.lon, end.lat],
+				],
 			});
 			if (distance >= nearestDistance) continue;
 			nearestDistance = distance;
@@ -386,10 +417,7 @@ export function findAssociatedCarRoads(
  * Compute an association score (0-1) between a route run and an OSM way.
  * Factors: distance fraction, alignment fraction, coverage fraction.
  */
-function computeAssociationScore(
-	run: RouteRun,
-	way: OsmWay,
-): number {
+function computeAssociationScore(run: RouteRun, way: OsmWay): number {
 	if (run.totalDistanceMeters < MIN_CONFIDENT_RUN_METERS) return 0;
 	if (way.geometry.length < 2) return 0;
 
@@ -430,9 +458,7 @@ function computeAssociationScore(
 
 	// Weighted score
 	return (
-		distanceFraction * 0.4 +
-		alignmentFraction * 0.4 +
-		coverageFraction * 0.2
+		distanceFraction * 0.4 + alignmentFraction * 0.4 + coverageFraction * 0.2
 	);
 }
 
@@ -440,10 +466,7 @@ function computeAssociationScore(
  * Check if a route edge is locally aligned with an OSM way.
  * Compares the edge bearing to the nearest OSM segment bearing.
  */
-function isLocallyAligned(
-	edge: RouteEdge,
-	way: OsmWay,
-): boolean {
+function isLocallyAligned(edge: RouteEdge, way: OsmWay): boolean {
 	if (way.geometry.length < 2) return false;
 
 	let minAngularDiff = 360;
@@ -461,7 +484,10 @@ function isLocallyAligned(
 
 		const dist = pointToGeometryDistanceMeters(edge.from, {
 			type: "LineString",
-			coordinates: [[start.lon, start.lat], [end.lon, end.lat]],
+			coordinates: [
+				[start.lon, start.lat],
+				[end.lon, end.lat],
+			],
 		});
 
 		if (dist <= ASSOCIATION_MAX_DISTANCE_METERS) {
@@ -475,10 +501,7 @@ function isLocallyAligned(
 /**
  * Check OSM layer/bridge/tunnel compatibility.
  */
-function isLayerCompatible(
-	point: Trackpoint,
-	way: OsmWay,
-): boolean {
+function isLayerCompatible(point: Trackpoint, way: OsmWay): boolean {
 	const layer = way.tags?.layer;
 	if (layer === undefined) return true;
 
@@ -500,10 +523,7 @@ function isLayerCompatible(
 /**
  * Calculate the minimum distance from a point to an OSM way.
  */
-function pointToWayDistanceMeters(
-	point: Trackpoint,
-	way: OsmWay,
-): number {
+function pointToWayDistanceMeters(point: Trackpoint, way: OsmWay): number {
 	if (way.geometry.length < 2) return Number.POSITIVE_INFINITY;
 
 	const coordinates: [number, number][] = way.geometry.map(
@@ -599,7 +619,8 @@ export function evaluateBikeLaneNoSameDirectionCarLane(
 	const osmWays = context.osmWays ?? [];
 	const osmWaysAvailable =
 		context.osmWaysAvailability?.status === "complete" ||
-		(context.osmWaysAvailability === undefined && context.osmWays !== undefined);
+		(context.osmWaysAvailability === undefined &&
+			context.osmWays !== undefined);
 
 	const edges = buildRouteEdges(points);
 	const runs = buildRouteRuns(edges, matches);
@@ -613,13 +634,18 @@ export function evaluateBikeLaneNoSameDirectionCarLane(
 			// Too short to evaluate confidently
 			for (const edge of run.edges) {
 				const match = matches?.[edge.index];
-				if (!isConfidentMatch(match ?? { status: "unmatched", confidence: "unknown" })) {
+				if (
+					!isConfidentMatch(
+						match ?? { status: "unmatched", confidence: "unknown" },
+					)
+				) {
 					uncertainties.push(
 						uncertaintyResult(
 							"bike_lane_no_same_direction_car_lane",
 							definition,
 							points[edge.index],
-							match ?? { status: "unmatched", confidence: "unknown" } as MatchResult,
+							match ??
+								({ status: "unmatched", confidence: "unknown" } as MatchResult),
 						),
 					);
 				}
@@ -771,7 +797,11 @@ export function evaluateBikeLaneNoSameDirectionCarLane(
 			}
 
 			// If no associated roads found, check osmWaysAvailable
-			if (!hasSameDirectionRoad && associatedRoads.length === 0 && !osmWaysAvailable) {
+			if (
+				!hasSameDirectionRoad &&
+				associatedRoads.length === 0 &&
+				!osmWaysAvailable
+			) {
 				for (const edge of run.edges) {
 					uncertainties.push(
 						result(
@@ -805,14 +835,14 @@ export function evaluateBikeLaneNoSameDirectionCarLane(
 						"unknown",
 						"A nearby car road has an unrecognized direction tag; same-direction traffic could not be determined.",
 						"low",
-					points[edge.index],
-					{
-						facilityRoadId: matchedWayId,
-						candidateRoadCount: associatedRoadCount,
-					},
-					{ provider: match.provider },
-				),
-			);
+						points[edge.index],
+						{
+							facilityRoadId: matchedWayId,
+							candidateRoadCount: associatedRoadCount,
+						},
+						{ provider: match.provider },
+					),
+				);
 			}
 		} else if (!osmWaysAvailable) {
 			for (const edge of run.edges) {
@@ -921,14 +951,17 @@ export function evaluateContraflowBike(
 		const firstEdge = run.edges[0];
 		const match = matches?.[firstEdge.index];
 
-		if (!isConfidentMatch(match ?? { status: "unmatched", confidence: "unknown" })) {
+		if (
+			!isConfidentMatch(match ?? { status: "unmatched", confidence: "unknown" })
+		) {
 			for (const edge of run.edges) {
 				uncertainties.push(
 					uncertaintyResult(
 						"contraflow_bike",
 						definition,
 						points[edge.index],
-						match ?? { status: "unmatched", confidence: "unknown" } as MatchResult,
+						match ??
+							({ status: "unmatched", confidence: "unknown" } as MatchResult),
 					),
 				);
 			}

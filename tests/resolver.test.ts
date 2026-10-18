@@ -55,7 +55,9 @@ describe("road matching", () => {
 
 		expect(result.availability.status).toBe("unavailable");
 		expect(result.matches).toHaveLength(points.length);
-		expect(result.matches.every((match) => match.status === "unmatched")).toBe(true);
+		expect(result.matches.every((match) => match.status === "unmatched")).toBe(
+			true,
+		);
 		expect(result.cache).toEqual({ hits: 0, misses: 0 });
 	});
 
@@ -180,7 +182,9 @@ describe("road matching", () => {
 		expect(fetcher).not.toHaveBeenCalled();
 		expect(result.availability.status).toBe("unavailable");
 		expect(result.matches).toHaveLength(points.length);
-		expect(result.matches.every((match) => match.status === "unmatched")).toBe(true);
+		expect(result.matches.every((match) => match.status === "unmatched")).toBe(
+			true,
+		);
 		expect(result.providerErrors[0]).toMatch(/offline/i);
 	});
 

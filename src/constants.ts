@@ -11,7 +11,8 @@ export const DEFAULT_MAX_TRACK_POINTS = 50_000;
 
 // ── Overpass / OSM constants ────────────────────────────
 export const OVERPASS_PRIMARY = "https://overpass-api.de/api/interpreter";
-export const OVERPASS_FALLBACK = "https://overpass.kumi.systems/api/interpreter";
+export const OVERPASS_FALLBACK =
+	"https://overpass.kumi.systems/api/interpreter";
 export const OVERPASS_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 export const OVERPASS_TIMEOUT_MS = 25_000;
 
@@ -41,7 +42,7 @@ export const DEFAULT_CACHE_DIR =
 		? (() => {
 				const os = require("node:os");
 				return require("node:path").join(os.homedir(), ".cache", "gpxlint");
-		  })()
+			})()
 		: "/tmp/gpxlint";
 export const OSM_CACHE_FILE_NAME = "osm-cache.json";
 export const CACHE_FILE_NAME = "cache.json";

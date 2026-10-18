@@ -12,7 +12,9 @@ import { evaluateContraflowBike as _eval } from "./segment_analysis";
 export const contraflowBikeParamsSchema = z.object({});
 
 /** Infer contraflow_bike params type from schema. */
-export type ContraflowBikeParamsInput = z.infer<typeof contraflowBikeParamsSchema>;
+export type ContraflowBikeParamsInput = z.infer<
+	typeof contraflowBikeParamsSchema
+>;
 
 /**
  * Evaluates the contraflow_bike rule.

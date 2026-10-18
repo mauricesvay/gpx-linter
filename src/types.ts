@@ -241,7 +241,10 @@ export interface LintPipelineReport {
 	availability: DataAvailability;
 	cache: CacheStats;
 	exitCode: 0 | 1 | 2 | 3;
-	rules: Record<string, { failures: number; unknown: number; skipped: number; enabled: boolean }>;
+	rules: Record<
+		string,
+		{ failures: number; unknown: number; skipped: number; enabled: boolean }
+	>;
 }
 
 export interface CacheStats {
@@ -262,7 +265,10 @@ export interface LintReport {
 		severity: Record<Severity, number>;
 		status: Record<ResultStatus, number>;
 	};
-	rules: Record<string, { failures: number; unknown: number; skipped: number; enabled: boolean }>;
+	rules: Record<
+		string,
+		{ failures: number; unknown: number; skipped: number; enabled: boolean }
+	>;
 	results: RuleResult[];
 	availability: DataAvailability;
 	cache: CacheStats;
@@ -275,7 +281,10 @@ export interface LintReport {
 	/** Match status per point: 'matched' | 'ambiguous' | 'unmatched'. */
 	matchedStatus?: (string | null)[];
 	/** Route statistics. */
-	routeStats?: Pick<RouteMetadata, "totalDistance" | "totalElevationGain" | "maxGradient">;
+	routeStats?: Pick<
+		RouteMetadata,
+		"totalDistance" | "totalElevationGain" | "maxGradient"
+	>;
 }
 
 export type GeoJsonGeometry =

@@ -40,10 +40,7 @@ export function makeCacheEntry(
 	return { version: CACHE_VERSION, storedAt: Date.now(), result };
 }
 
-function normalizeCacheEntry(
-	key: string,
-	value: unknown,
-): CacheEntry | null {
+function normalizeCacheEntry(key: string, value: unknown): CacheEntry | null {
 	if (!isRecord(value)) return null;
 	const v = value as Record<string, unknown>;
 

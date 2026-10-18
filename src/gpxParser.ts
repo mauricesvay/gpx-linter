@@ -148,11 +148,7 @@ export function calculateMaxGradient(points: Trackpoint[]): number {
 	let previous: Trackpoint | null = null;
 	for (const point of points) {
 		if (point.segmentId !== previous?.segmentId) previous = null;
-		if (
-			previous !== null &&
-			point.ele !== null &&
-			previous.ele !== null
-		) {
+		if (previous !== null && point.ele !== null && previous.ele !== null) {
 			const horizontalDist = point.distanceTo(previous);
 			if (horizontalDist > 0) {
 				const grad = Math.abs(point.ele - previous.ele) / horizontalDist;
