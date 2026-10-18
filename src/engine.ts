@@ -10,6 +10,7 @@ import {
 	routeGaps,
 	sharpTurns,
 } from "./rules";
+import { errorMessage } from "./utils";
 import type {
 	RuleContext,
 	RuleDefinition,
@@ -243,7 +244,20 @@ export async function evaluateRules(
 		}
 		const handler = handlers[ruleId];
 		if (!handler) continue;
-		results.push(...(await handler(definition, points, context || {})));
+		try {
+			results.push(...(await handler(definition, points, context || {})));
+		} catch (err) {
+			results.push(
+				result(
+					ruleId,
+					definition,
+					metadata.defaultSeverity,
+					"unknown",
+					`Rule "${ruleId}" failed: ${errorMessage(err)}`,
+					"low",
+				),
+			);
+		}
 	}
 	for (const [ruleId, definition] of Object.entries(definitions)) {
 		if (!(ruleId in registry)) {

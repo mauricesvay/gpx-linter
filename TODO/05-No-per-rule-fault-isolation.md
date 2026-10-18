@@ -2,7 +2,7 @@
 title: "P1-05: No per-rule fault isolation"
 priority: P1
 category: "contract"
-status: open
+status: done
 created: 2026-10-17
 files:
   - src/engine.ts
