@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isGeoJsonFeatureCollection, isWithinFeature } from "../src/geo";
 import { point } from "./fixtures";
+import { bboxKeyString, routeBbox } from "../src/osm/cache";
 
 describe("GeoJSON roadworks geometry", () => {
 	it("applies the configured buffer around line features", () => {
@@ -63,5 +64,31 @@ describe("GeoJSON roadworks geometry", () => {
 				],
 			}),
 		).toBe(false);
+	});
+});
+
+describe("bboxKeyString / routeBbox", () => {
+	it("produces different keys for bboxes with same grid origin but different sizes", () => {
+		const shortRoute = [
+			point(2.0, 48.0),
+			point(2.01, 48.01),
+		];
+		const longRoute = [
+			point(2.0, 48.0),
+			point(2.5, 48.5),
+		];
+		const shortBbox = routeBbox(shortRoute);
+		const longBbox = routeBbox(longRoute);
+		expect(bboxKeyString(shortBbox)).not.toBe(bboxKeyString(longBbox));
+	});
+
+	it("includes all four coordinates in the key string", () => {
+		const bbox = routeBbox([point(2.0, 48.0), point(3.0, 49.0)]);
+		const key = bboxKeyString(bbox);
+		const parts = key.split(",");
+		expect(parts.length).toBe(4);
+		// Verify the 4th component (lonMax) differs from the 3rd (latMax)
+		// when latMax !== lonMax
+		expect(parts[2]).not.toBe(parts[3]);
 	});
 });

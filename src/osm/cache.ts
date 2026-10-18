@@ -157,13 +157,13 @@ function bboxString(b: OsmBbox): string {
 
 // Snap chunk bbox to a fixed grid so different routes covering the same area
 // produce the same cache key. Grid is 0.2° (~22km) matching MAX_CHUNK_DEGREES.
-function bboxKeyString(b: OsmBbox): string {
+export function bboxKeyString(b: OsmBbox): string {
 	const grid = MAX_CHUNK_DEGREES;
 	return [
 		(Math.floor(b.latMin / grid) * grid).toFixed(4),
 		(Math.floor(b.lonMin / grid) * grid).toFixed(4),
 		(Math.floor(b.latMax / grid) * grid).toFixed(4),
-		(Math.floor(b.latMax / grid) * grid).toFixed(4),
+		(Math.floor(b.lonMax / grid) * grid).toFixed(4),
 	].join(",");
 }
 
