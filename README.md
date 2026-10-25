@@ -33,9 +33,9 @@ The v1 implementation includes:
 | `sharp_turn` | disabled | GPX geometry |
 | `off_road` | disabled | Road match |
 | `missing_elevation` | enabled | GPX elevation fields |
-| `route_gaps` | enabled | GPX geometry |
-| `loop_closure` | enabled, skipped unless `loop_expected` is true | GPX geometry |
-| `bike_lane_no_same_direction_car_lane` | enabled | Road match and OSM way geometry/tags |
+| `route_gaps` | disabled | GPX geometry |
+| `loop_closure` | disabled | GPX geometry |
+| `bike_lane_no_same_direction_car_lane` | disabled | Road match and OSM way geometry/tags |
 
 For `bike_lane_no_same_direction_car_lane`, a nearby road only counts when its
 local geometry aligns with the route; a crossing road does not count, and a
@@ -47,20 +47,15 @@ Unavailable or ambiguous inputs produce `unknown`, not a pass. Reports show sour
 
 Pass a YAML file using `--config`. Settings merge with the built-in defaults. See [`examples/gpxlint.yml`](examples/gpxlint.yml) for a full example.
 
-The roadworks source can also be supplied inline:
-
-```sh
-npx gpxlint check route.gpx --geojson data/roadworks.geojson
-```
-
-Config-relative GeoJSON paths resolve relative to the YAML file. GeoJSON roadworks support `Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, and `MultiPolygon` features. `properties.name` is included in findings when available.
+The roadworks GeoJSON source is configured in the YAML file using the `geojson_file` parameter under the `roadworks` rule. Config-relative paths resolve relative to the YAML file. GeoJSON roadworks support `Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, and `MultiPolygon` features. `properties.name` is included in findings when available.
 
 ## CLI
 
 ```text
 npx gpxlint check route.gpx [--config gpxlint.yml]
+  [--dry-run]
+  [--max-points <n>]
   [--rule max_slope --disable|--enable]
-  [--geojson roadworks.geojson]
   [--routing overpass|offline] [--pbf path/to/osm.pbf] [--url URL]
   [--format text|json|html] [--output report.json] [--no-cache]
 
