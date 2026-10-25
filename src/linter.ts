@@ -41,6 +41,7 @@ export interface OsmEnricher {
 		matches: import("./types").MatchResult[],
 		options: {
 			url?: string;
+			pbfPath?: string;
 			cache?: boolean;
 			cacheDir?: string;
 		},
@@ -227,6 +228,7 @@ export async function runLinter(options: LintOptions): Promise<LintResult> {
 		matching && !inlineOsm
 			? await enricher.enrich(parsed.points, matching.matches, {
 					url: config.routing?.overpass_url,
+					pbfPath: pbfPath ?? config.routing?.pbf_path,
 					cache: cache && config.routing?.cache !== false,
 					cacheDir: config.routing?.cache_dir,
 				})

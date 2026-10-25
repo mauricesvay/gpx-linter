@@ -1,6 +1,11 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fetchOverpassBboxWays, type OsmWay, routeBbox } from "../osm";
+import {
+	fetchOverpassBboxWays,
+	type OsmWay,
+	routeBbox,
+	snapPointsToWays,
+} from "../osm";
 import type {
 	CacheStats,
 	DataSourceAvailability,
@@ -162,6 +167,20 @@ export async function resolveRoads(
 				osmWays = data.ways ?? [];
 				osmWaysAvailability = getOsmWaysAvailability(data);
 				osmWaysErrors = data.errors;
+				if (data.ways) {
+					const resolved = snapPointsToWays(points, data.ways, "offline");
+					for (const index of missIndexes) {
+						const match = resolved[index];
+						matches[index] = match;
+						if (cacheEnabled && isUsableCacheEntry(match)) {
+							cache[cacheKey(points[index])] = {
+								version: CACHE_VERSION,
+								storedAt: now,
+								result: match,
+							};
+						}
+					}
+				}
 			} else {
 				errors.push("offline: No PBF file provided. Use --pbf <path>.");
 			}
