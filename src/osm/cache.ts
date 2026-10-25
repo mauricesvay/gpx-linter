@@ -67,6 +67,7 @@ export interface OsmCacheEntry {
 
 export interface OsmDataOptions {
 	url?: string;
+	pbfPath?: string;
 	fetcher?: typeof fetch;
 	cache?: boolean;
 	cacheDir?: string;

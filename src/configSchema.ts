@@ -50,6 +50,7 @@ export const routingConfigSchema = z.object({
 	provider: routingProviderSchema.optional(),
 	url: httpUrlSchema.optional(),
 	overpass_url: httpUrlSchema.optional(),
+	pbf_path: z.string().optional(),
 	cache: z.boolean().optional(),
 	cache_dir: z.string().optional(),
 });

@@ -33,6 +33,7 @@
 		"fast-xml-parser": "^5.11.2",
 		"handlebars": "^4.7.10",
 		"js-yaml": "^4.1.0",
+		"pbf": "^5.1.2",
 		"pmtiles": "^4.5.0",
 		"zod": "^3.25.76"
 	},

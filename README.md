@@ -61,20 +61,26 @@ Config-relative GeoJSON paths resolve relative to the YAML file. GeoJSON roadwor
 npx gpxlint check route.gpx [--config gpxlint.yml]
   [--rule max_slope --disable|--enable]
   [--geojson roadworks.geojson]
-  [--routing overpass|offline] [--url URL]
+  [--routing overpass|offline] [--pbf path/to/osm.pbf] [--url URL]
   [--format text|json|html] [--output report.json] [--no-cache]
 
 npx gpxlint rules list
 npx gpxlint cache clear
 ```
 
-`--routing offline` currently means no live routing backend: road-dependent rules will be reported as unknown unless a future offline backend is configured. It does not silently substitute a nearest-road guess.
+`--routing offline` requires `--pbf <path>` pointing to an OSM PBF extract
+(e.g. from [Geofabrik](https://download.geofabrik.de/)). The linter parses
+the PBF locally, extracts highway ways within the route's bounding box, and
+snaps trackpoints to those ways — zero network calls. Without a PBF file,
+`--routing offline` reports all road-dependent rules as unknown.
 
 ## Matching, data, and privacy
 
 Road matching fetches OSM highway geometry from Overpass and snaps trackpoints to nearby ways locally, retaining confidence, snap distance, and unmatched/ambiguous states. Contraflow evaluation reuses the same Overpass data (way tags like `oneway`, `bus_lane`) and compares the route's direction with the OSM way direction. Public Overpass mirrors are used by default; configure `overpass_url` for a self-hosted instance. Route coordinates are sent to the Overpass endpoint you configure.
 
-Successful road matches are cached for 30 days and complete Overpass responses for 7 days under `~/.cache/gpxlint/`. Expired entries are ignored. Failed and partial responses are not cached as complete data. Cache hit and miss counts appear in the report.
+When using `--routing offline --pbf <file>`, all data comes from the local PBF file — no network access is needed. The PBF is parsed at runtime, highway ways are extracted within the route's bounding box, and trackpoints are snapped to those ways entirely offline.
+
+Successful road matches are cached for 30 days and complete Overpass responses for 7 days under `~/.cache/gpxlint/`. Expired entries are ignored. Failed and partial responses are not cached as complete data. Cache hit and miss counts appear in the report. PBF data is not cached — it is parsed on every invocation from the file you specify.
 
 ## Report formats
 

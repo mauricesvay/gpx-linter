@@ -3,7 +3,7 @@ finding_id: 5
 category: should_fix
 severity: low
 component: src/gpxParser.ts
-status: open
+status: done
 tags:
   - performance
   - gpx

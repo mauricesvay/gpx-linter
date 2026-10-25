@@ -42,6 +42,7 @@ export function createCli(): Command {
 		.option("--enable", "Enable the selected rule")
 		.option("--disable", "Disable the selected rule")
 		.option("--routing <provider>", "Routing provider (overpass, offline)")
+		.option("--pbf <file>", "Path to an OSM PBF extract for offline mode")
 		.option("--url <url>", "Routing provider URL")
 		.option("-f, --format <format>", "Report format (text, json, html)")
 		.option("-o, --output <file>", "Write report to a file")
@@ -98,6 +99,7 @@ interface CheckOptions {
 	enable?: boolean;
 	disable?: boolean;
 	routing?: "overpass" | "offline";
+	pbf?: string;
 	url?: string;
 	format?: "text" | "json" | "html";
 	output?: string;
@@ -190,6 +192,7 @@ async function runSingleFile(
 			disable: options.disable,
 			routing: options.routing,
 			url: options.url,
+			pbfPath: options.pbf,
 			format: options.format,
 			output: options.output,
 			cache: options.cache !== false,

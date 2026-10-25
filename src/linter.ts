@@ -25,6 +25,7 @@ export interface RouteResolver {
 			provider?: "overpass" | "offline";
 			url?: string;
 			overpassUrl?: string;
+			pbfPath?: string;
 			cache?: boolean;
 			cacheDir?: string;
 			fetcher?: typeof fetch;
@@ -40,6 +41,7 @@ export interface OsmEnricher {
 		matches: import("./types").MatchResult[],
 		options: {
 			url?: string;
+			pbfPath?: string;
 			cache?: boolean;
 			cacheDir?: string;
 		},
@@ -77,6 +79,7 @@ export interface LintOptions {
 	disable?: boolean;
 	routing?: "overpass" | "offline";
 	url?: string;
+	pbfPath?: string;
 	format?: "text" | "json" | "html";
 	output?: string;
 	cache?: boolean;
@@ -122,6 +125,7 @@ export async function runLinter(options: LintOptions): Promise<LintResult> {
 		disable,
 		routing,
 		url,
+		pbfPath,
 		format,
 		output,
 		cache = true,
@@ -184,6 +188,7 @@ export async function runLinter(options: LintOptions): Promise<LintResult> {
 		provider: routing ?? config.routing?.provider ?? "overpass",
 		url: config.routing?.url,
 		overpassUrl: config.routing?.overpass_url,
+		pbfPath: pbfPath ?? config.routing?.pbf_path,
 		cache: cache && config.routing?.cache !== false,
 		cacheDir: config.routing?.cache_dir,
 		fetchOsmWays: needsOsmWays,
@@ -223,6 +228,7 @@ export async function runLinter(options: LintOptions): Promise<LintResult> {
 		matching && !inlineOsm
 			? await enricher.enrich(parsed.points, matching.matches, {
 					url: config.routing?.overpass_url,
+					pbfPath: pbfPath ?? config.routing?.pbf_path,
 					cache: cache && config.routing?.cache !== false,
 					cacheDir: config.routing?.cache_dir,
 				})

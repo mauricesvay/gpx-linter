@@ -158,6 +158,7 @@ export interface LinterConfig {
 		provider?: "overpass" | "offline";
 		url?: string;
 		overpass_url?: string;
+		pbf_path?: string;
 		cache?: boolean;
 		cache_dir?: string;
 	};

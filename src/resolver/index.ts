@@ -1,6 +1,11 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fetchOverpassBboxWays, type OsmWay, routeBbox } from "../osm";
+import {
+	fetchOverpassBboxWays,
+	type OsmWay,
+	routeBbox,
+	snapPointsToWays,
+} from "../osm";
 import type {
 	CacheStats,
 	DataSourceAvailability,
@@ -40,6 +45,7 @@ export async function resolveRoads(
 		provider?: "overpass" | "offline";
 		url?: string;
 		overpassUrl?: string;
+		pbfPath?: string;
 		cache?: boolean;
 		cacheDir?: string;
 		fetcher?: typeof fetch;
@@ -146,7 +152,38 @@ export async function resolveRoads(
 				});
 			}
 		} else {
-			errors.push("offline: No offline road-matching backend is configured.");
+			// Offline mode: use PBF file if provided.
+			if (options.pbfPath) {
+				const data = await fetchOverpassBboxWays(routeBbox(points), {
+					pbfPath: options.pbfPath,
+					cache: options.cache,
+					cacheDir: options.cacheDir,
+				});
+				if (data.ways === null) {
+					errors.push(
+						`PBF: ${data.errors.join("; ") || "No highway ways found."}`,
+					);
+				}
+				osmWays = data.ways ?? [];
+				osmWaysAvailability = getOsmWaysAvailability(data);
+				osmWaysErrors = data.errors;
+				if (data.ways) {
+					const resolved = snapPointsToWays(points, data.ways, "offline");
+					for (const index of missIndexes) {
+						const match = resolved[index];
+						matches[index] = match;
+						if (cacheEnabled && isUsableCacheEntry(match)) {
+							cache[cacheKey(points[index])] = {
+								version: CACHE_VERSION,
+								storedAt: now,
+								result: match,
+							};
+						}
+					}
+				}
+			} else {
+				errors.push("offline: No PBF file provided. Use --pbf <path>.");
+			}
 		}
 	}
 
