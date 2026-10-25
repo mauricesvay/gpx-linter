@@ -33,6 +33,7 @@ import {
 	OVERPASS_TTL_MS,
 	readOsmCache,
 } from "./cache";
+import { fetchPbfWays } from "./pbf";
 
 /* ── Rate-limit / backoff helpers ───────────────────────────────────── */
 
@@ -167,6 +168,27 @@ export async function fetchOverpassBboxWays(
 			entries = await readOsmCache(cachePath);
 		} catch (error) {
 			cacheError = `Unable to read OSM cache: ${errorMessage(error)}`;
+		}
+	}
+	// PBF mode: use local file, skip network entirely.
+	if (options.pbfPath) {
+		try {
+			const data = fetchPbfWays(options.pbfPath, bbox);
+			return {
+				...data,
+				cache,
+				cacheError,
+			};
+		} catch (error) {
+			return {
+				ways: null,
+				completedChunks: 0,
+				totalChunks: 1,
+				errors: [`PBF file not found or unreadable: ${errorMessage(error)}`],
+				cache,
+				cacheError: `Unable to read PBF: ${errorMessage(error)}`,
+				source: `pbf:${options.pbfPath}`,
+			};
 		}
 	}
 	const urls = options.url

@@ -40,6 +40,7 @@ export async function resolveRoads(
 		provider?: "overpass" | "offline";
 		url?: string;
 		overpassUrl?: string;
+		pbfPath?: string;
 		cache?: boolean;
 		cacheDir?: string;
 		fetcher?: typeof fetch;
@@ -146,7 +147,24 @@ export async function resolveRoads(
 				});
 			}
 		} else {
-			errors.push("offline: No offline road-matching backend is configured.");
+			// Offline mode: use PBF file if provided.
+			if (options.pbfPath) {
+				const data = await fetchOverpassBboxWays(routeBbox(points), {
+					pbfPath: options.pbfPath,
+					cache: options.cache,
+					cacheDir: options.cacheDir,
+				});
+				if (data.ways === null) {
+					errors.push(
+						`PBF: ${data.errors.join("; ") || "No highway ways found."}`,
+					);
+				}
+				osmWays = data.ways ?? [];
+				osmWaysAvailability = getOsmWaysAvailability(data);
+				osmWaysErrors = data.errors;
+			} else {
+				errors.push("offline: No PBF file provided. Use --pbf <path>.");
+			}
 		}
 	}
 
