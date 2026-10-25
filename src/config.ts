@@ -165,7 +165,11 @@ export async function loadConfig(configPath: string): Promise<LinterConfig> {
 
 	// Merge routing
 	if (validated.routing !== undefined) {
-		config.routing = mergeRouting(config.routing, validated.routing);
+		config.routing = mergeRouting(
+			config.routing,
+			validated.routing,
+			configPath,
+		);
 	}
 
 	// Merge reporting
@@ -207,12 +211,13 @@ function recordOrEmpty(value: unknown): Record<string, unknown> {
 function mergeRouting(
 	base: LinterConfig["routing"],
 	raw: z.infer<typeof routingConfigSchema>,
+	configPath: string,
 ): LinterConfig["routing"] {
 	const result = { ...base };
 	if (raw.provider !== undefined) {
 		result.provider = raw.provider;
 	}
-	for (const key of ["url", "overpass_url", "cache_dir"] as const) {
+	for (const key of ["url", "overpass_url", "cache_dir", "pbf_path"] as const) {
 		const value = raw[key];
 		if (value !== undefined && value !== "") {
 			result[key] = value;
@@ -220,6 +225,9 @@ function mergeRouting(
 	}
 	if (raw.cache !== undefined) {
 		result.cache = raw.cache;
+	}
+	if (raw.pbf_path !== undefined && raw.pbf_path !== "") {
+		result.pbf_path = path.resolve(path.dirname(configPath), raw.pbf_path);
 	}
 	return result;
 }

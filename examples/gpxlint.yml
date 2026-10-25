@@ -62,7 +62,8 @@ route_context:
   ferry_allowed: false
 
 routing:
-  provider: overpass
+  provider: offline
+  pbf_path: ile-de-france-261024.osm.pbf
   cache: true
 
 reporting:
